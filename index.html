@@ -1250,3 +1250,1255 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Chats de WhatsApp</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@200;300&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --color-primary: #075e54;
+            --color-secondary: #128c7e;
+            --color-tertiary: #25d366;
+            --color-bg: #EAE6DF;
+            --color-msg-in: #DCF8C6;
+            --color-msg-out: #E0E0E0;
+            --font-family-title: 'Roboto Condensed', sans-serif;
+            --font-family-content: 'Roboto', sans-serif;
+            --header-height: 60px;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: var(--font-family-content);
+            background-color: #f0f2f5;
+            color: #111b21;
+        }
+        
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #main-content {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #messages-container {
+            flex: 0 0 35%;
+            background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
+            background-size: cover;
+            background-position: center;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #dashboard-container {
+            flex: 0 0 65%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+        }
+
+        /* Headers fijos */
+        #global-header {
+            width: 100%;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-weight: 700;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+        
+        /* Ajuste de main-content para el header fijo */
+        #main-content {
+            margin-top: var(--header-height);
+        }
+
+        #header-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        #header-info h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        #header-info p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        #new-chat-btn {
+            background-color: var(--color-tertiary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #new-chat-btn:hover {
+            background-color: #20c25a;
+        }
+        
+        #new-chat-btn svg {
+            fill: white;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .whatsapp-message {
+            max-width: 80%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .whatsapp-message:hover {
+            transform: scale(1.01);
+        }
+        
+        .whatsapp-message.sender {
+            background-color: var(--color-msg-in);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        
+        .whatsapp-message.recipient {
+            background-color: var(--color-msg-out);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .whatsapp-message.selected {
+            border: 2px solid var(--color-primary);
+            box-shadow: 0 0 10px rgba(7, 94, 84, 0.5);
+        }
+        
+        .message-author {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: black;
+            font-family: var(--font-family-title);
+        }
+        
+        .message-text {
+            font-size: 16px;
+            color: black;
+        }
+        
+        .message-time {
+            font-size: 14px;
+            color: #555;
+            margin-top: 5px;
+            text-align: right;
+            display: block;
+        }
+
+        .dashboard-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* Estilo de las secciones desplegables */
+        details {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        details[open] {
+            background-color: #f0f2f5;
+        }
+
+        summary {
+            font-size: 1.2em;
+            font-weight: 700;
+            padding: 20px;
+            color: var(--color-primary);
+            cursor: pointer;
+            outline: none;
+            list-style: none;
+            display: flex;
+            align-items: center;
+        }
+        
+        summary::before {
+            content: '►';
+            margin-right: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+        
+        .dashboard-content {
+            padding: 0 20px 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--color-primary);
+            font-weight: 700;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .controls label, .controls input, .controls select, .controls button {
+            font-family: var(--font-family-content);
+            font-size: 1.1em;
+        }
+        
+        .dashboard-content p {
+            font-size: 1em;
+        }
+
+        .dashboard-content p strong {
+            font-size: 1em;
+            color: #333;
+        }
+
+        .controls button {
+            background-color: var(--color-tertiary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .controls button:hover {
+            background-color: #20c25a;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .chart-title {
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .chart-title.green-bg-black-text {
+            background-color: var(--color-tertiary);
+            color: black;
+        }
+
+        .chart-title.green-bg-white-text {
+            background-color: var(--color-tertiary);
+            color: white;
+        }
+
+        .large-names {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #000;
+        }
+        
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+
+        .author-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            border: 1px solid #888;
+        }
+
+        #file-upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 100%;
+            background-color: #f0f2f5;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+        
+        #upload-card {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            max-width: 500px;
+        }
+
+        #file-upload-section h1 {
+            color: var(--color-primary);
+            font-size: 2.5em;
+        }
+        
+        #file-upload-section p {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .custom-file-upload {
+            background-color: var(--color-tertiary);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-weight: 700;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .custom-file-upload:hover {
+            background-color: #20c25a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--color-tertiary);
+            animation: spin 1s ease infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .message-box button {
+            margin-top: 15px;
+            padding: 8px 20px;
+            border: none;
+            background-color: var(--color-tertiary);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .popup-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .popup-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .popup-content h3 {
+            padding: 8px 15px;
+            border-radius: 8px;
+            background-color: var(--color-tertiary);
+            color: white;
+            margin-top: 0;
+        }
+
+        .popup-content p {
+            margin: 0;
+        }
+        
+        .popup-content button {
+            background-color: var(--color-tertiary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .popup-content button:hover {
+            background-color: #20c25a;
+        }
+
+        .dont-show-again-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .dont-show-again-container input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.15em;
+            height: 1.15em;
+            border: 0.1em solid currentColor;
+            border-radius: 0.15em;
+            transform: translateY(-0.075em);
+            cursor: pointer;
+            display: grid;
+            place-content: center;
+        }
+
+        .dont-show-again-container input[type="checkbox"]::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 45%);
+            transform: scale(0);
+            transform-origin: bottom left;
+            transition: transform 0.3s ease;
+            box-shadow: inset 1em 1em var(--color-tertiary);
+        }
+
+        .dont-show-again-container input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+
+        .dont-show-again-container label {
+            font-size: 0.9em;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .stats-text {
+            font-size: 1.2em;
+        }
+
+        .stats-count {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #main-content {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            #messages-container, #dashboard-container {
+                flex: 1 1 100%;
+                height: auto;
+                padding-top: 10px;
+            }
+            #upload-card {
+                padding: 20px;
+            }
+            #global-header {
+                flex-direction: column;
+                height: auto;
+                padding: 10px;
+                position: static;
+                text-align: center;
+            }
+            #header-info {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            #main-content {
+                margin-top: 0;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- Contenedor para la carga del archivo -->
+        <div id="file-upload-section">
+            <div id="upload-card">
+                <h1>Analizador de Chats de WhatsApp</h1>
+                <p>Sube tu archivo de chat exportado (.txt) para comenzar el análisis. ¡No te preocupes por el tamaño!</p>
+                <label for="fileInput" class="custom-file-upload">
+                    Seleccionar Archivo
+                </label>
+                <input type="file" id="fileInput" accept=".txt" style="display: none;">
+                <div class="spinner" id="loading-spinner"></div>
+            </div>
+        </div>
+
+        <!-- Encabezado fijo global -->
+        <div id="global-header" style="display:none;">
+            <div id="header-info">
+                <div class="interlocutors-info">
+                    <h2 id="interlocutor-names"></h2>
+                    <p>Total de mensajes: <strong id="total-messages-header">0</strong></p>
+                </div>
+            </div>
+            <button id="new-chat-btn" onclick="openFileExplorer()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                Nuevo Chat
+            </button>
+        </div>
+
+        <!-- Contenido principal con mensajes y dashboard -->
+        <div id="main-content" style="display:none;">
+            <!-- Contenedor para los mensajes (35%) -->
+            <div id="messages-container"></div>
+
+            <!-- Contenedor para el dashboard y las estadísticas (65%) -->
+            <div id="dashboard-container">
+                
+                <details class="dashboard-section" id="general-stats-section">
+                    <summary>Estadísticas Generales</summary>
+                    <div class="dashboard-content">
+                        <p class="stats-text">Mensajes de <span id="jab-name-stats">Autor 1</span>: <strong class="stats-count" id="jab-count">0</strong></p>
+                        <p class="stats-text">Mensajes de <span id="angeles-name-stats">Autor 2</span>: <strong class="stats-count" id="angeles-count">0</strong></p>
+                    </div>
+                </details>
+
+                <details class="dashboard-section" id="message-distribution-section">
+                    <summary>Distribución de Mensajes</summary>
+                    <div class="dashboard-content">
+                         <div class="author-info">
+                            <span class="author-box" style="background-color: rgba(7, 94, 84, 0.8);"></span>
+                            <span class="large-names" id="jab-name-dist"></span>: <strong class="large-names" id="jab-count-dist">0</strong>
+                        </div>
+                        <div class="author-info">
+                            <span class="author-box" style="background-color: rgba(18, 140, 126, 0.8);"></span>
+                            <span class="large-names" id="angeles-name-dist"></span>: <strong class="large-names" id="angeles-count-dist">0</strong>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="messagesByAuthorChart"></canvas>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="dashboard-section" id="search-analysis-section">
+                    <summary>Análisis de Búsqueda y Resultados</summary>
+                    <div class="dashboard-content">
+                        <div class="controls">
+                            <label for="keywordInput">Filtrar por palabra/frase:</label>
+                            <input type="text" id="keywordInput" placeholder="Ej. proyecto">
+                            <button onclick="applyFilter()">Aplicar Filtro</button>
+                            <button onclick="resetFilter()">Reiniciar Filtro</button>
+                        </div>
+                        <div id="filtered-info" style="display:none; margin-bottom: 20px;">
+                            <p>Mensajes totales en el filtro: <strong id="filtered-total-count">0</strong></p>
+                            <p>Mensajes de <span class="large-names" id="filtered-jab-name"></span>: <strong class="large-names" id="filtered-jab-count">0</strong></p>
+                            <p>Mensajes de <span class="large-names" id="filtered-angeles-name"></span>: <strong class="large-names" id="filtered-angeles-count">0</strong></p>
+                        </div>
+                        <div id="filtered-chart-container" class="chart-container" style="display:none;">
+                             <div class="chart-title green-bg-white-text">DISTRIBUCIÓN DE MENSAJES DEL FILTRO</div>
+                             <canvas id="filteredMessagesByAuthorChart"></canvas>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="manual-analysis-section" class="dashboard-section" ontoggle="showManualAnalysisPopup(event)">
+                    <summary>Análisis de Selección Manual</summary>
+                    <div class="dashboard-content">
+                        <div class="controls">
+                            <label for="customChartTitle">Título de la Gráfica:</label>
+                            <input type="text" id="customChartTitle" placeholder="Ej. Conversación sobre el proyecto">
+                            <button onclick="analyzeSelectedMessages()">Analizar Selección</button>
+                            <button onclick="clearSelection()">Limpiar Selección</button>
+                        </div>
+                        <div id="manual-analysis-info" style="display:none; margin-bottom: 20px;">
+                            <p>Mensajes totales seleccionados: <strong id="selected-total-count">0</strong></p>
+                             <div class="author-info">
+                                <span class="author-box" style="background-color: #ff0000;"></span>
+                                <span class="large-names" id="selected-jab-name"></span>: <strong class="large-names" id="selected-jab-count">0</strong>
+                            </div>
+                            <div class="author-info">
+                                <span class="author-box" style="background-color: #008000;"></span>
+                                <span class="large-names" id="selected-angeles-name"></span>: <strong class="large-names" id="selected-angeles-count">0</strong>
+                            </div>
+                        </div>
+                        <div id="custom-chart-container" class="chart-container" style="display:none;">
+                            <div class="chart-title green-bg-white-text" id="custom-chart-title-text"></div>
+                            <canvas id="customMessagesByAuthorChart"></canvas>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="dashboard-section" id="temporal-analysis-section">
+                    <summary>Análisis de Tendencia de Mensajes</summary>
+                    <div class="dashboard-content">
+                        <div class="controls">
+                            <label for="timeframeSelect">Agrupar por:</label>
+                            <select id="timeframeSelect" onchange="renderChartTemporal()">
+                                <option value="hour">Hora del Día</option>
+                                <option value="day">Día de la Semana</option>
+                                <option value="month">Mes</option>
+                            </select>
+                        </div>
+                         <div class="chart-container">
+                            <div class="chart-title green-bg-white-text" id="temporal-chart-title-text"></div>
+                            <canvas id="temporalMessagesChart"></canvas>
+                        </div>
+                    </div>
+                </details>
+                
+            </div>
+        </div>
+
+        <!-- Caja de mensaje personalizada (reemplaza a alert/confirm) -->
+        <div id="message-box" class="message-box">
+            <span id="message-text"></span>
+            <button onclick="hideMessageBox()">OK</button>
+        </div>
+
+        <!-- Modal para el pop-up de análisis manual -->
+        <div id="manual-analysis-popup" class="popup-modal">
+            <div class="popup-content">
+                <h3>ANÁLISIS DE SELECCIÓN MANUAL</h3>
+                <p>Para analizar un fragmento específico del chat, haz clic en los mensajes a la izquierda.</p>
+                <p>Cada mensaje que selecciones se marcará con un borde, y sus datos se incluirán en este análisis. Puedes seleccionar mensajes de ambos interlocutores para comparar su conversación sobre un tema en particular.</p>
+                <div class="dont-show-again-container">
+                    <input type="checkbox" id="dont-show-again-checkbox">
+                    <label for="dont-show-again-checkbox">No volver a mostrar</label>
+                </div>
+                <button onclick="hideManualAnalysisPopup()">Entendido</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Variables globales
+        let allMessages = [];
+        let filteredMessages = [];
+        let selectedMessages = new Set();
+        let myChart1, myChart2, myChart3, myChart4;
+        let senderNames = [];
+
+        // Elementos del DOM
+        const fileInput = document.getElementById('fileInput');
+        const fileUploadSection = document.getElementById('file-upload-section');
+        const mainContent = document.getElementById('main-content');
+        const messagesContainer = document.getElementById('messages-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const spinner = document.getElementById('loading-spinner');
+        const keywordInput = document.getElementById('keywordInput');
+        const searchAnalysisSection = document.getElementById('search-analysis-section');
+        const manualAnalysisSection = document.getElementById('manual-analysis-section');
+        const customChartContainer = document.getElementById('custom-chart-container');
+        const customChartTitleInput = document.getElementById('customChartTitle');
+        const customChartTitleText = document.getElementById('custom-chart-title-text');
+        const temporalChartTitleText = document.getElementById('temporal-chart-title-text');
+        const detailsElements = document.querySelectorAll('details');
+        const filteredInfo = document.getElementById('filtered-info');
+        const manualAnalysisInfo = document.getElementById('manual-analysis-info');
+        const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
+
+        // Elementos del header fijo
+        const globalHeader = document.getElementById('global-header');
+        const interlocutorNamesEl = document.getElementById('interlocutor-names');
+        const totalMessagesHeaderEl = document.getElementById('total-messages-header');
+        const jabNameStatsEl = document.getElementById('jab-name-stats');
+        const angelesNameStatsEl = document.getElementById('angeles-name-stats');
+        const jabNameDistEl = document.getElementById('jab-name-dist');
+        const angelesNameDistEl = document.getElementById('angeles-name-dist');
+        const jabCountDistEl = document.getElementById('jab-count-dist');
+        const angelesCountDistEl = document.getElementById('angeles-count-dist');
+
+
+        // Cerrar todos los desplegables excepto el que se hace clic
+        detailsElements.forEach(details => {
+            details.addEventListener('toggle', () => {
+                if (details.open) {
+                    detailsElements.forEach(otherDetails => {
+                        if (otherDetails !== details) {
+                            otherDetails.open = false;
+                        }
+                    });
+                }
+            });
+        });
+
+        // Escuchadores de eventos
+        fileInput.addEventListener('change', handleFileSelect);
+        messagesContainer.addEventListener('click', toggleMessageSelection);
+
+        function showMessageBox(message) {
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+            msgText.innerText = message;
+            msgBox.style.display = 'flex';
+        }
+
+        function hideMessageBox() {
+            document.getElementById('message-box').style.display = 'none';
+        }
+
+        function showManualAnalysisPopup(event) {
+            if (event.target.open) {
+                const shouldShowPopup = !localStorage.getItem('hideManualAnalysisPopup');
+                if (shouldShowPopup) {
+                    document.getElementById('manual-analysis-popup').style.display = 'flex';
+                }
+            }
+        }
+
+        function hideManualAnalysisPopup() {
+            if (dontShowAgainCheckbox.checked) {
+                localStorage.setItem('hideManualAnalysisPopup', 'true');
+            }
+            document.getElementById('manual-analysis-popup').style.display = 'none';
+        }
+        
+        function openFileExplorer() {
+            fileInput.click();
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                showMessageBox('No se seleccionó ningún archivo.');
+                return;
+            }
+
+            spinner.style.display = 'block';
+
+            try {
+                const text = await readFileAsync(file);
+                allMessages = parseMessages(text);
+                
+                if (allMessages.length === 0) {
+                    showMessageBox('No se encontraron mensajes válidos. Asegúrate de que el formato del archivo sea correcto.');
+                    return;
+                }
+                
+                const uniqueAuthors = new Set(allMessages.map(m => m.author));
+                senderNames = Array.from(uniqueAuthors).sort();
+                
+                const SENDER_JAB = senderNames.find(name => name.toLowerCase().includes('jab')) || senderNames[0] || 'Autor 1';
+                const SENDER_ANGELES = senderNames.find(name => name.toLowerCase().includes('ángeles')) || senderNames[1] || 'Autor 2';
+
+                filteredMessages = [...allMessages];
+                
+                fileUploadSection.style.display = 'none';
+                globalHeader.style.display = 'flex';
+                mainContent.style.display = 'flex';
+
+                renderMessages(allMessages, SENDER_JAB, SENDER_ANGELES);
+                updateDashboard(SENDER_JAB, SENDER_ANGELES);
+                
+                // Abrir la primera sección al inicio
+                document.getElementById('general-stats-section').open = true;
+
+            } catch (error) {
+                console.error("Error al procesar el archivo:", error);
+                showMessageBox('Hubo un error al procesar el archivo. Asegúrate de que el formato sea correcto.');
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function readFileAsync(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function parseMessages(text) {
+            const messages = [];
+            const lines = text.split('\n');
+            const regex = /^(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}),\s*(\d{1,2}:\d{2})\s*([ap]\.\s*m\.\s*)?\s*-\s*([^:]+):\s*(.*)/i;
+            let currentMessage = null;
+
+            lines.forEach(line => {
+                const match = line.match(regex);
+                if (match) {
+                    if (currentMessage) {
+                        messages.push(currentMessage);
+                    }
+                    const [, dateStr, timeStr, ampmStr, author, text] = match;
+                    const [day, month, year] = dateStr.replace(/[\.-]/g, '/').split('/');
+                    const fullYear = year.length === 2 ? `20${year}` : year;
+
+                    let [hours, minutes] = timeStr.split(':').map(Number);
+                    if (ampmStr) {
+                        if (ampmStr.toLowerCase().includes('p.m.') && hours < 12) {
+                            hours += 12;
+                        } else if (ampmStr.toLowerCase().includes('a.m.') && hours === 12) {
+                            hours = 0;
+                        }
+                    }
+                    const timestamp = new Date(fullYear, month - 1, day, hours, minutes);
+                    
+                    const messageText = text.trim().toLowerCase() === '<multimedia omitido>' ? 'Multimedia omitido' : text.trim();
+
+                    currentMessage = {
+                        date: dateStr,
+                        time: timeStr + (ampmStr ? ` ${ampmStr.trim()}` : ''),
+                        author: author.trim(),
+                        text: messageText,
+                        timestamp
+                    };
+                } else if (currentMessage) {
+                    currentMessage.text += '\n' + line.trim();
+                }
+            });
+
+            if (currentMessage) {
+                messages.push(currentMessage);
+            }
+
+            return messages;
+        }
+
+        function renderMessages(messages, SENDER_JAB, SENDER_ANGELES) {
+            messagesContainer.innerHTML = '';
+            messages.forEach((msg, index) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('whatsapp-message');
+                messageDiv.dataset.index = allMessages.indexOf(msg); // Usar el índice original
+                if (selectedMessages.has(messageDiv.dataset.index)) {
+                     messageDiv.classList.add('selected');
+                }
+
+                if (msg.author === SENDER_JAB) {
+                    messageDiv.classList.add('sender');
+                } else if (msg.author === SENDER_ANGELES) {
+                    messageDiv.classList.add('recipient');
+                }
+
+                const messageTextContent = msg.text.replace(/\n/g, '<br>');
+                
+                messageDiv.innerHTML = `
+                    <div class="message-author">${msg.author}</div>
+                    <div class="message-text">${messageTextContent}</div>
+                    <div class="message-time">${msg.date}, ${msg.time}</div>
+                `;
+                messagesContainer.appendChild(messageDiv);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function updateDashboard(SENDER_JAB, SENDER_ANGELES) {
+            const jabCount = filteredMessages.filter(m => m.author === SENDER_JAB).length;
+            const angelesCount = filteredMessages.filter(m => m.author === SENDER_ANGELES).length;
+
+            interlocutorNamesEl.innerText = `${SENDER_JAB} y ${SENDER_ANGELES}`;
+            totalMessagesHeaderEl.innerText = allMessages.length;
+            jabNameStatsEl.innerText = SENDER_JAB;
+            angelesNameStatsEl.innerText = SENDER_ANGELES;
+            jabNameDistEl.innerText = SENDER_JAB;
+            angelesNameDistEl.innerText = SENDER_ANGELES;
+
+
+            document.getElementById('jab-count').innerText = jabCount;
+            document.getElementById('angeles-count').innerText = angelesCount;
+            document.getElementById('jab-count-dist').innerText = jabCount;
+            document.getElementById('angeles-count-dist').innerText = angelesCount;
+            
+            renderChartMessagesByAuthor(jabCount, angelesCount);
+            renderChartTemporal();
+            renderFilteredChart();
+        }
+
+        function applyFilter() {
+            const keyword = keywordInput.value.toLowerCase().trim();
+            if (keyword) {
+                filteredMessages = allMessages.filter(msg => msg.text.toLowerCase().includes(keyword));
+                filteredInfo.style.display = 'block';
+                document.getElementById('filtered-chart-container').style.display = 'block';
+            } else {
+                filteredMessages = [...allMessages];
+                filteredInfo.style.display = 'none';
+                document.getElementById('filtered-chart-container').style.display = 'none';
+            }
+            renderMessages(filteredMessages, senderNames[0], senderNames[1]);
+            updateDashboard(senderNames[0], senderNames[1]);
+
+            // Desplegar la sección de análisis de búsqueda
+            searchAnalysisSection.open = true;
+        }
+
+        function resetFilter() {
+            keywordInput.value = '';
+            filteredMessages = [...allMessages];
+            filteredInfo.style.display = 'none';
+            document.getElementById('filtered-chart-container').style.display = 'none';
+            renderMessages(filteredMessages, senderNames[0], senderNames[1]);
+            updateDashboard(senderNames[0], senderNames[1]);
+        }
+        
+        function resetApp() {
+            allMessages = [];
+            filteredMessages = [];
+            selectedMessages.clear();
+            if(myChart1) myChart1.destroy();
+            if(myChart2) myChart2.destroy();
+            if(myChart3) myChart3.destroy();
+            if(myChart4) myChart4.destroy();
+            fileInput.value = '';
+            messagesContainer.innerHTML = '';
+            mainContent.style.display = 'none';
+            globalHeader.style.display = 'none';
+            fileUploadSection.style.display = 'flex';
+            filteredInfo.style.display = 'none';
+            manualAnalysisInfo.style.display = 'none';
+            document.getElementById('filtered-chart-container').style.display = 'none';
+            customChartContainer.style.display = 'none';
+            customChartTitleInput.value = '';
+        }
+
+        function toggleMessageSelection(event) {
+            const messageDiv = event.target.closest('.whatsapp-message');
+            if (!messageDiv) return;
+
+            const index = parseInt(messageDiv.dataset.index);
+            if (selectedMessages.has(index)) {
+                selectedMessages.delete(index);
+                messageDiv.classList.remove('selected');
+            } else {
+                selectedMessages.add(index);
+                messageDiv.classList.add('selected');
+            }
+            if(selectedMessages.size > 0) {
+                 manualAnalysisSection.open = true;
+                 manualAnalysisInfo.style.display = 'block';
+            } else {
+                 manualAnalysisInfo.style.display = 'none';
+                 customChartContainer.style.display = 'none';
+            }
+        }
+        
+        function clearSelection() {
+            selectedMessages.clear();
+            renderMessages(allMessages, senderNames[0], senderNames[1]);
+            manualAnalysisInfo.style.display = 'none';
+            customChartContainer.style.display = 'none';
+            customChartTitleInput.value = '';
+        }
+
+        function analyzeSelectedMessages() {
+            if (selectedMessages.size === 0) {
+                showMessageBox('Por favor, selecciona al menos un mensaje.');
+                return;
+            }
+
+            const messagesToAnalyze = Array.from(selectedMessages).map(index => allMessages[index]);
+            const jabCount = messagesToAnalyze.filter(m => m.author === senderNames[0]).length;
+            const angelesCount = messagesToAnalyze.filter(m => m.author === senderNames[1]).length;
+            let customTitle = customChartTitleInput.value.trim().toUpperCase() || 'GRÁFICA DE SELECCIÓN PERSONALIZADA';
+            
+            const totalMessages = jabCount + angelesCount;
+            document.getElementById('selected-total-count').innerText = totalMessages;
+            document.getElementById('selected-jab-name').innerText = senderNames[0];
+            document.getElementById('selected-jab-count').innerText = jabCount;
+            document.getElementById('selected-angeles-name').innerText = senderNames[1];
+            document.getElementById('selected-angeles-count').innerText = angelesCount;
+
+            const isJabMajority = jabCount > angelesCount;
+            const majorityColor = 'rgba(7, 94, 84, 0.8)';
+            const minorityColor = 'rgba(18, 140, 126, 0.8)';
+
+            const labels = [senderNames[0], senderNames[1]];
+            const data = [jabCount, angelesCount];
+
+            customChartContainer.style.display = 'block';
+            customChartTitleText.innerText = customTitle;
+            const ctx = document.getElementById('customMessagesByAuthorChart').getContext('2d');
+            if(myChart4) myChart4.destroy();
+            myChart4 = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Número de Mensajes',
+                        data: data,
+                        backgroundColor: [majorityColor, minorityColor],
+                        borderColor: ['#fff', '#fff'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 20,
+                                boxHeight: 20,
+                                padding: 20,
+                                pointStyle: 'rectRounded',
+                                
+                            }
+                        },
+                        title: {
+                            display: false,
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderFilteredChart() {
+            const jabCount = filteredMessages.filter(m => m.author === senderNames[0]).length;
+            const angelesCount = filteredMessages.filter(m => m.author === senderNames[1]).length;
+
+            if (jabCount === 0 && angelesCount === 0) {
+                filteredInfo.style.display = 'none';
+                document.getElementById('filtered-chart-container').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('filtered-total-count').innerText = filteredMessages.length;
+            document.getElementById('filtered-jab-name').innerText = senderNames[0];
+            document.getElementById('filtered-jab-count').innerText = jabCount;
+            document.getElementById('filtered-angeles-name').innerText = senderNames[1];
+            document.getElementById('filtered-angeles-count').innerText = angelesCount;
+
+            filteredInfo.style.display = 'block';
+            document.getElementById('filtered-chart-container').style.display = 'block';
+            
+            const ctx = document.getElementById('filteredMessagesByAuthorChart').getContext('2d');
+            if (myChart3) myChart3.destroy();
+            myChart3 = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [senderNames[0], senderNames[1]],
+                    datasets: [{
+                        label: 'NÚMERO DE MENSAJES',
+                        data: [jabCount, angelesCount],
+                        backgroundColor: [
+                            'rgba(7, 94, 84, 0.8)',
+                            'rgba(18, 140, 126, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(7, 94, 84, 1)',
+                            'rgba(18, 140, 126, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: false,
+                        }
+                    },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function renderChartMessagesByAuthor(jabCount, angelesCount) {
+            const ctx = document.getElementById('messagesByAuthorChart').getContext('2d');
+            if (myChart1) myChart1.destroy();
+            myChart1 = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: [senderNames[0], senderNames[1]],
+                    datasets: [{
+                        label: 'NÚMERO DE MENSAJES',
+                        data: [jabCount, angelesCount],
+                        backgroundColor: [
+                            'rgba(7, 94, 84, 0.8)',
+                            'rgba(18, 140, 126, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(7, 94, 84, 1)',
+                            'rgba(18, 140, 126, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 20,
+                                boxHeight: 20,
+                                padding: 20,
+                                pointStyle: 'rectRounded',
+                            }
+                        },
+                        title: {
+                            display: false,
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderChartTemporal() {
+            const timeframe = document.getElementById('timeframeSelect').value;
+            const ctx = document.getElementById('temporalMessagesChart').getContext('2d');
+            if (myChart2) myChart2.destroy();
+
+            let labels, data, title;
+            
+            if (timeframe === 'hour') {
+                labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+                data = Array(24).fill(0);
+                filteredMessages.forEach(msg => {
+                    data[msg.timestamp.getHours()]++;
+                });
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+            } else if (timeframe === 'day') {
+                labels = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+                data = Array(7).fill(0);
+                filteredMessages.forEach(msg => {
+                    data[msg.timestamp.getDay()]++;
+                });
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+            } else if (timeframe === 'month') {
+                const monthlyData = {};
+                filteredMessages.forEach(msg => {
+                    const month = msg.timestamp.getMonth();
+                    const year = msg.timestamp.getFullYear();
+                    const key = `${month + 1}/${year}`;
+                    monthlyData[key] = (monthlyData[key] || 0) + 1;
+                });
+                labels = Object.keys(monthlyData);
+                data = Object.values(monthlyData);
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+            }
+            
+            myChart2 = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Número de Mensajes',
+                        data: data,
+                        borderColor: 'rgba(37, 211, 102, 1)',
+                        backgroundColor: 'rgba(37, 211, 102, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 20
+                        }
+                    }
+                }
+            });
+            const titleContainer = document.getElementById('temporal-chart-title-text');
+            if (titleContainer) {
+                titleContainer.innerText = title;
+            }
+        }
+        
+    </script>
+</body>
+</html>
