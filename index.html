@@ -30,9 +30,9 @@
         
         #app-container {
             display: flex;
+            flex-direction: column;
             height: 100vh;
             overflow: hidden;
-            flex-direction: column;
         }
 
         #main-content {
@@ -78,6 +78,11 @@
             top: 0;
             left: 0;
             z-index: 100;
+        }
+        
+        /* Ajuste de main-content para el header fijo */
+        #main-content {
+            margin-top: var(--header-height);
         }
 
         #header-info {
@@ -153,15 +158,16 @@
         }
         
         .message-author {
-            font-size: 14px;
+            font-size: 18px;
             font-weight: bold;
             margin-bottom: 5px;
-            color: var(--color-primary);
+            color: black;
             font-family: var(--font-family-title);
         }
         
         .message-text {
             font-size: 16px;
+            color: black;
         }
         
         .message-time {
@@ -234,13 +240,17 @@
             margin-bottom: 20px;
         }
 
-        .controls label, .controls input, .controls select, .controls button, .dashboard-content p {
+        .controls label, .controls input, .controls select, .controls button {
             font-family: var(--font-family-content);
             font-size: 1.1em;
         }
         
+        .dashboard-content p {
+            font-size: 1em;
+        }
+
         .dashboard-content p strong {
-            font-size: 1.2em;
+            font-size: 1em;
             color: #333;
         }
 
@@ -260,26 +270,50 @@
 
         .chart-container {
             width: 100%;
-            height: 400px;
+            height: 300px;
             margin-top: 20px;
         }
 
         .chart-title {
-            background-color: var(--color-tertiary);
-            color: white;
-            font-size: 1em;
             padding: 8px 15px;
             border-radius: 8px;
             text-align: center;
             margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .chart-title.green-bg-black-text {
+            background-color: var(--color-tertiary);
+            color: black;
+        }
+
+        .chart-title.green-bg-white-text {
+            background-color: var(--color-tertiary);
+            color: white;
         }
 
         .large-names {
-            font-size: 1.5em;
-            font-weight: 300;
+            font-size: 1.1em;
+            font-weight: 500;
             color: #000;
         }
         
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+
+        .author-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            border: 1px solid #888;
+        }
+
         #file-upload-section {
             display: flex;
             flex-direction: column;
@@ -397,10 +431,42 @@
             text-align: center;
         }
 
+        .popup-content h3 {
+            padding: 8px 15px;
+            border-radius: 8px;
+            background-color: var(--color-tertiary);
+            color: white;
+            margin-top: 0;
+        }
+        
+        .popup-content button {
+            background-color: var(--color-tertiary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .popup-content button:hover {
+            background-color: #20c25a;
+        }
+
+        .stats-text {
+            font-size: 1.2em;
+        }
+
+        .stats-count {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             #main-content {
                 flex-direction: column;
+                overflow-y: auto;
             }
             #messages-container, #dashboard-container {
                 flex: 1 1 100%;
@@ -420,6 +486,10 @@
             #header-info {
                 flex-direction: column;
                 gap: 5px;
+            }
+            
+            #main-content {
+                margin-top: 0;
             }
         }
         
@@ -459,7 +529,7 @@
         </div>
 
         <!-- Contenido principal con mensajes y dashboard -->
-        <div id="main-content" style="display:none; margin-top: var(--header-height);">
+        <div id="main-content" style="display:none;">
             <!-- Contenedor para los mensajes (35%) -->
             <div id="messages-container"></div>
 
@@ -469,16 +539,22 @@
                 <details class="dashboard-section" id="general-stats-section">
                     <summary>Estadísticas Generales</summary>
                     <div class="dashboard-content">
-                        <p>Mensajes de <span id="jab-name-stats">Autor 1</span>: <strong id="jab-count">0</strong></p>
-                        <p>Mensajes de <span id="angeles-name-stats">Autor 2</span>: <strong id="angeles-count">0</strong></p>
+                        <p class="stats-text">Mensajes de <span id="jab-name-stats">Autor 1</span>: <strong class="stats-count" id="jab-count">0</strong></p>
+                        <p class="stats-text">Mensajes de <span id="angeles-name-stats">Autor 2</span>: <strong class="stats-count" id="angeles-count">0</strong></p>
                     </div>
                 </details>
 
                 <details class="dashboard-section" id="message-distribution-section">
                     <summary>Distribución de Mensajes</summary>
                     <div class="dashboard-content">
-                        <p>Mensajes totales de <span class="large-names" id="jab-name-dist"></span>: <strong class="large-names" id="jab-count-dist">0</strong></p>
-                        <p>Mensajes totales de <span class="large-names" id="angeles-name-dist"></span>: <strong class="large-names" id="angeles-count-dist">0</strong></p>
+                         <div class="author-info">
+                            <span class="author-box" style="background-color: rgba(7, 94, 84, 0.8);"></span>
+                            <span class="large-names" id="jab-name-dist"></span>: <strong class="large-names" id="jab-count-dist">0</strong>
+                        </div>
+                        <div class="author-info">
+                            <span class="author-box" style="background-color: rgba(18, 140, 126, 0.8);"></span>
+                            <span class="large-names" id="angeles-name-dist"></span>: <strong class="large-names" id="angeles-count-dist">0</strong>
+                        </div>
                         <div class="chart-container">
                             <canvas id="messagesByAuthorChart"></canvas>
                         </div>
@@ -500,6 +576,7 @@
                             <p>Mensajes de <span class="large-names" id="filtered-angeles-name"></span>: <strong class="large-names" id="filtered-angeles-count">0</strong></p>
                         </div>
                         <div id="filtered-chart-container" class="chart-container" style="display:none;">
+                             <div class="chart-title green-bg-white-text">DISTRIBUCIÓN DE MENSAJES DEL FILTRO</div>
                              <canvas id="filteredMessagesByAuthorChart"></canvas>
                         </div>
                     </div>
@@ -516,11 +593,17 @@
                         </div>
                         <div id="manual-analysis-info" style="display:none; margin-bottom: 20px;">
                             <p>Mensajes totales seleccionados: <strong id="selected-total-count">0</strong></p>
-                            <p>Mensajes de <span class="large-names" id="selected-jab-name"></span>: <strong class="large-names" id="selected-jab-count">0</strong></p>
-                            <p>Mensajes de <span class="large-names" id="selected-angeles-name"></span>: <strong class="large-names" id="selected-angeles-count">0</strong></p>
+                             <div class="author-info">
+                                <span class="author-box" style="background-color: #ff0000;"></span>
+                                <span class="large-names" id="selected-jab-name"></span>: <strong class="large-names" id="selected-jab-count">0</strong>
+                            </div>
+                            <div class="author-info">
+                                <span class="author-box" style="background-color: #008000;"></span>
+                                <span class="large-names" id="selected-angeles-name"></span>: <strong class="large-names" id="selected-angeles-count">0</strong>
+                            </div>
                         </div>
                         <div id="custom-chart-container" class="chart-container" style="display:none;">
-                            <div class="chart-title" id="custom-chart-title-text"></div>
+                            <div class="chart-title green-bg-white-text" id="custom-chart-title-text"></div>
                             <canvas id="customMessagesByAuthorChart"></canvas>
                         </div>
                     </div>
@@ -537,7 +620,8 @@
                                 <option value="month">Mes</option>
                             </select>
                         </div>
-                        <div class="chart-container">
+                         <div class="chart-container">
+                            <div class="chart-title green-bg-white-text" id="temporal-chart-title-text"></div>
                             <canvas id="temporalMessagesChart"></canvas>
                         </div>
                     </div>
@@ -555,7 +639,7 @@
         <!-- Modal para el pop-up de análisis manual -->
         <div id="manual-analysis-popup" class="popup-modal">
             <div class="popup-content">
-                <h3>Análisis de Selección Manual</h3>
+                <h3>ANÁLISIS DE SELECCIÓN MANUAL</h3>
                 <p>Para analizar un fragmento específico del chat, haz clic en los mensajes a la izquierda.</p>
                 <p>Cada mensaje que selecciones se marcará con un borde, y sus datos se incluirán en este análisis. Puedes seleccionar mensajes de ambos interlocutores para comparar su conversación sobre un tema en particular.</p>
                 <button onclick="hideManualAnalysisPopup()">Entendido</button>
@@ -585,6 +669,7 @@
         const customChartContainer = document.getElementById('custom-chart-container');
         const customChartTitleInput = document.getElementById('customChartTitle');
         const customChartTitleText = document.getElementById('custom-chart-title-text');
+        const temporalChartTitleText = document.getElementById('temporal-chart-title-text');
         const detailsElements = document.querySelectorAll('details');
         const filteredInfo = document.getElementById('filtered-info');
         const manualAnalysisInfo = document.getElementById('manual-analysis-info');
@@ -722,11 +807,13 @@
                     }
                     const timestamp = new Date(fullYear, month - 1, day, hours, minutes);
                     
+                    const messageText = text.trim().toLowerCase() === '<multimedia omitido>' ? 'Multimedia omitido' : text.trim();
+
                     currentMessage = {
                         date: dateStr,
                         time: timeStr + (ampmStr ? ` ${ampmStr.trim()}` : ''),
                         author: author.trim(),
-                        text: text.trim(),
+                        text: messageText,
                         timestamp
                     };
                 } else if (currentMessage) {
@@ -777,14 +864,14 @@
             totalMessagesHeaderEl.innerText = allMessages.length;
             jabNameStatsEl.innerText = SENDER_JAB;
             angelesNameStatsEl.innerText = SENDER_ANGELES;
-            jabCountDistEl.innerText = jabCount;
-            angelesCountDistEl.innerText = angelesCount;
             jabNameDistEl.innerText = SENDER_JAB;
             angelesNameDistEl.innerText = SENDER_ANGELES;
 
 
             document.getElementById('jab-count').innerText = jabCount;
             document.getElementById('angeles-count').innerText = angelesCount;
+            document.getElementById('jab-count-dist').innerText = jabCount;
+            document.getElementById('angeles-count-dist').innerText = angelesCount;
             
             renderChartMessagesByAuthor(jabCount, angelesCount);
             renderChartTemporal();
@@ -876,7 +963,7 @@
             const messagesToAnalyze = Array.from(selectedMessages).map(index => allMessages[index]);
             const jabCount = messagesToAnalyze.filter(m => m.author === senderNames[0]).length;
             const angelesCount = messagesToAnalyze.filter(m => m.author === senderNames[1]).length;
-            const customTitle = customChartTitleInput.value.trim() || 'Gráfica de Selección Personalizada';
+            let customTitle = customChartTitleInput.value.trim().toUpperCase() || 'GRÁFICA DE SELECCIÓN PERSONALIZADA';
             
             const totalMessages = jabCount + angelesCount;
             document.getElementById('selected-total-count').innerText = totalMessages;
@@ -886,12 +973,11 @@
             document.getElementById('selected-angeles-count').innerText = angelesCount;
 
             const isJabMajority = jabCount > angelesCount;
-            const majorityColor = '#ff0000'; // Rojo puro
-            const minorityColor = '#008000'; // Verde oscuro
+            const majorityColor = 'rgba(7, 94, 84, 0.8)';
+            const minorityColor = 'rgba(18, 140, 126, 0.8)';
+
             const labels = [senderNames[0], senderNames[1]];
             const data = [jabCount, angelesCount];
-            const sortedData = [jabCount, angelesCount].sort((a,b) => b - a);
-            const sortedLabels = isJabMajority ? [senderNames[0], senderNames[1]] : [senderNames[1], senderNames[0]];
 
             customChartContainer.style.display = 'block';
             customChartTitleText.innerText = customTitle;
@@ -900,10 +986,10 @@
             myChart4 = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: sortedLabels,
+                    labels: labels,
                     datasets: [{
                         label: 'Número de Mensajes',
-                        data: sortedData,
+                        data: data,
                         backgroundColor: [majorityColor, minorityColor],
                         borderColor: ['#fff', '#fff'],
                         borderWidth: 2
@@ -912,7 +998,17 @@
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: { position: 'top' },
+                        legend: { 
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 20,
+                                boxHeight: 20,
+                                padding: 20,
+                                pointStyle: 'rectRounded',
+                                
+                            }
+                        },
                         title: {
                             display: false,
                         }
@@ -947,7 +1043,7 @@
                 data: {
                     labels: [senderNames[0], senderNames[1]],
                     datasets: [{
-                        label: 'Número de Mensajes',
+                        label: 'NÚMERO DE MENSAJES',
                         data: [jabCount, angelesCount],
                         backgroundColor: [
                             'rgba(7, 94, 84, 0.8)',
@@ -965,9 +1061,7 @@
                     plugins: {
                         legend: { display: false },
                         title: {
-                            display: true,
-                            text: 'Distribución de Mensajes del Filtro',
-                            font: { size: 18, weight: 'bold' }
+                            display: false,
                         }
                     },
                     scales: { y: { beginAtZero: true } }
@@ -983,7 +1077,7 @@
                 data: {
                     labels: [senderNames[0], senderNames[1]],
                     datasets: [{
-                        label: 'Número de Mensajes',
+                        label: 'NÚMERO DE MENSAJES',
                         data: [jabCount, angelesCount],
                         backgroundColor: [
                             'rgba(7, 94, 84, 0.8)',
@@ -1001,6 +1095,13 @@
                     plugins: {
                         legend: {
                             position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 20,
+                                boxHeight: 20,
+                                padding: 20,
+                                pointStyle: 'rectRounded',
+                            }
                         },
                         title: {
                             display: false,
@@ -1023,14 +1124,14 @@
                 filteredMessages.forEach(msg => {
                     data[msg.timestamp.getHours()]++;
                 });
-                title = 'Mensajes por Hora del Día';
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
             } else if (timeframe === 'day') {
-                labels = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                labels = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
                 data = Array(7).fill(0);
                 filteredMessages.forEach(msg => {
                     data[msg.timestamp.getDay()]++;
                 });
-                title = 'Mensajes por Día de la Semana';
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
             } else if (timeframe === 'month') {
                 const monthlyData = {};
                 filteredMessages.forEach(msg => {
@@ -1041,7 +1142,7 @@
                 });
                 labels = Object.keys(monthlyData);
                 data = Object.values(monthlyData);
-                title = 'Mensajes por Mes';
+                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
             }
             
             myChart2 = new Chart(ctx, {
@@ -1062,18 +1163,25 @@
                     plugins: {
                         legend: { display: false },
                         title: {
-                            display: true,
-                            text: title,
-                            font: { size: 18, weight: 'bold' }
+                            display: false,
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true
                         }
+                    },
+                    layout: {
+                        padding: {
+                            top: 20
+                        }
                     }
                 }
             });
+            const titleContainer = document.getElementById('temporal-chart-title-text');
+            if (titleContainer) {
+                titleContainer.innerText = title;
+            }
         }
         
     </script>
