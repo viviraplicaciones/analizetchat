@@ -521,6 +521,31 @@
             font-weight: bold;
         }
         
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--color-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            transition: opacity 0.5s ease-out;
+        }
+        #splash-screen img {
+            width: 120px;
+            height: 120px;
+            border-radius: 24px;
+            margin-bottom: 20px;
+        }
+        #splash-screen .dont-show-again-container label {
+            color: white;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             #main-content {
@@ -555,6 +580,16 @@
     </style>
 </head>
 <body>
+    
+    <!-- Splash Screen -->
+    <div id="splash-screen" style="display: none;">
+        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg" alt="App Logo">
+        <div class="dont-show-again-container">
+            <input type="checkbox" id="dont-show-splash-again-checkbox">
+            <label for="dont-show-splash-again-checkbox">No volver a mostrar</label>
+        </div>
+    </div>
+
 
     <div id="app-container">
         
@@ -708,10 +743,52 @@
                 <button onclick="hideManualAnalysisPopup()">Entendido</button>
             </div>
         </div>
+        
+        <!-- Modal para instalar PWA -->
+        <div id="install-pwa-popup" class="popup-modal">
+            <div class="popup-content">
+                <h3>¡Instala la Aplicación!</h3>
+                <p>Para una mejor experiencia, puedes instalar esta aplicación en tu dispositivo. Funcionará más rápido y podrás usarla sin conexión a internet.</p>
+                 <div class="dont-show-again-container">
+                    <input type="checkbox" id="dont-show-install-again-checkbox">
+                    <label for="dont-show-install-again-checkbox">No volver a mostrar</label>
+                </div>
+                <button onclick="hideInstallPwaPopup()">Entendido</button>
+            </div>
+        </div>
+
 
     </div>
 
     <script>
+        // splash screen logic
+        window.addEventListener('DOMContentLoaded', () => {
+            const splashScreen = document.getElementById('splash-screen');
+            const dontShowSplashCheckbox = document.getElementById('dont-show-splash-again-checkbox');
+
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            const hideSplash = localStorage.getItem('hideSplashScreen');
+
+            if (isStandalone && !hideSplash) {
+                splashScreen.style.display = 'flex';
+                setTimeout(() => {
+                    splashScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        splashScreen.style.display = 'none';
+                    }, 500); // Wait for fade out transition
+                }, 1500);
+            }
+
+            dontShowSplashCheckbox.addEventListener('change', () => {
+                if (dontShowSplashCheckbox.checked) {
+                    localStorage.setItem('hideSplashScreen', 'true');
+                } else {
+                    localStorage.removeItem('hideSplashScreen');
+                }
+            });
+        });
+
+
         // Variables globales
         let allMessages = [];
         let filteredMessages = [];
@@ -794,6 +871,22 @@
             document.getElementById('manual-analysis-popup').style.display = 'none';
         }
         
+        function showInstallPwaPopup() {
+             const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+             const hideInstallPrompt = localStorage.getItem('hideInstallPrompt');
+             if (!isStandalone && !hideInstallPrompt) {
+                 document.getElementById('install-pwa-popup').style.display = 'flex';
+             }
+        }
+        
+        function hideInstallPwaPopup() {
+            const dontShowInstallCheckbox = document.getElementById('dont-show-install-again-checkbox');
+            if (dontShowInstallCheckbox.checked) {
+                localStorage.setItem('hideInstallPrompt', 'true');
+            }
+            document.getElementById('install-pwa-popup').style.display = 'none';
+        }
+
         function openFileExplorer() {
             fileInput.click();
         }
@@ -833,6 +926,10 @@
                 
                 // Abrir la primera sección al inicio
                 document.getElementById('general-stats-section').open = true;
+                
+                // Show install prompt after first successful analysis
+                showInstallPwaPopup();
+
 
             } catch (error) {
                 console.error("Error al procesar el archivo:", error);
@@ -1269,3 +1366,4 @@
     </script>
 </body>
 </html>
+
