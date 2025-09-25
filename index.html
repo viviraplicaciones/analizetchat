@@ -429,14 +429,21 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
             max-width: 500px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-
+        
         .popup-content h3 {
             padding: 8px 15px;
             border-radius: 8px;
             background-color: var(--color-tertiary);
             color: white;
             margin-top: 0;
+        }
+
+        .popup-content p {
+            margin: 0;
         }
         
         .popup-content button {
@@ -451,6 +458,51 @@
 
         .popup-content button:hover {
             background-color: #20c25a;
+        }
+
+        .dont-show-again-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .dont-show-again-container input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.15em;
+            height: 1.15em;
+            border: 0.1em solid currentColor;
+            border-radius: 0.15em;
+            transform: translateY(-0.075em);
+            cursor: pointer;
+            display: grid;
+            place-content: center;
+        }
+
+        .dont-show-again-container input[type="checkbox"]::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 45%);
+            transform: scale(0);
+            transform-origin: bottom left;
+            transition: transform 0.3s ease;
+            box-shadow: inset 1em 1em var(--color-tertiary);
+        }
+
+        .dont-show-again-container input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+
+        .dont-show-again-container label {
+            font-size: 0.9em;
+            color: #555;
+            cursor: pointer;
         }
 
         .stats-text {
@@ -642,6 +694,10 @@
                 <h3>ANÁLISIS DE SELECCIÓN MANUAL</h3>
                 <p>Para analizar un fragmento específico del chat, haz clic en los mensajes a la izquierda.</p>
                 <p>Cada mensaje que selecciones se marcará con un borde, y sus datos se incluirán en este análisis. Puedes seleccionar mensajes de ambos interlocutores para comparar su conversación sobre un tema en particular.</p>
+                <div class="dont-show-again-container">
+                    <input type="checkbox" id="dont-show-again-checkbox">
+                    <label for="dont-show-again-checkbox">No volver a mostrar</label>
+                </div>
                 <button onclick="hideManualAnalysisPopup()">Entendido</button>
             </div>
         </div>
@@ -673,6 +729,7 @@
         const detailsElements = document.querySelectorAll('details');
         const filteredInfo = document.getElementById('filtered-info');
         const manualAnalysisInfo = document.getElementById('manual-analysis-info');
+        const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
 
         // Elementos del header fijo
         const globalHeader = document.getElementById('global-header');
@@ -716,11 +773,17 @@
 
         function showManualAnalysisPopup(event) {
             if (event.target.open) {
-                document.getElementById('manual-analysis-popup').style.display = 'flex';
+                const shouldShowPopup = !localStorage.getItem('hideManualAnalysisPopup');
+                if (shouldShowPopup) {
+                    document.getElementById('manual-analysis-popup').style.display = 'flex';
+                }
             }
         }
 
         function hideManualAnalysisPopup() {
+            if (dontShowAgainCheckbox.checked) {
+                localStorage.setItem('hideManualAnalysisPopup', 'true');
+            }
             document.getElementById('manual-analysis-popup').style.display = 'none';
         }
         
