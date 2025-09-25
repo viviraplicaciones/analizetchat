@@ -1,1 +1,62 @@
-02
+{
+  "name": "Analizador de Chats de WhatsApp",
+  "short_name": "Analizador de Chats",
+  "description": "Una herramienta para analizar estadísticas de chats de WhatsApp. Funciona sin conexión.",
+  "lang": "es-ES",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "start_url": "./",
+  "background_color": "#128c7e",
+  "theme_color": "#075e54",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "128x128",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "64x64",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "32x32",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "24x24",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+      "sizes": "16x16",
+      "type": "image/jpeg"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Análisis de Chat",
+      "short_name": "Análisis",
+      "description": "Carga un archivo de chat de WhatsApp para analizarlo",
+      "url": "/",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
