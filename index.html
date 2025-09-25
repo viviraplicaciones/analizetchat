@@ -545,6 +545,74 @@
         #splash-screen .dont-show-again-container label {
             color: white;
         }
+        
+        /* Install Toast */
+        #install-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #e8f5e9; /* Pastel green */
+            color: #1b5e20; /* Dark green text */
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 2500;
+            max-width: 350px;
+            animation: slide-in 0.5s ease-out;
+        }
+
+        @keyframes slide-in {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #install-toast-content p {
+            margin: 0;
+            font-weight: 500;
+        }
+        #install-toast-content p small {
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .install-toast-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .install-toast-buttons button {
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+
+        .install-toast-buttons .install-btn {
+            background-color: var(--color-tertiary);
+            color: white;
+        }
+        .install-toast-buttons .install-btn:hover {
+            background-color: #20c25a;
+        }
+        .install-toast-buttons .dismiss-btn {
+            background-color: transparent;
+            color: #1b5e20;
+        }
+        .install-toast-buttons .dismiss-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -574,6 +642,11 @@
             
             #main-content {
                 margin-top: 0;
+            }
+            #install-toast {
+                left: 50%;
+                transform: translateX(-50%);
+                width: calc(100% - 40px);
             }
         }
         
@@ -744,16 +817,14 @@
             </div>
         </div>
         
-        <!-- Modal para instalar PWA -->
-        <div id="install-pwa-popup" class="popup-modal">
-            <div class="popup-content">
-                <h3>¡Instala la Aplicación!</h3>
-                <p>Para una mejor experiencia, puedes instalar esta aplicación en tu dispositivo. Funcionará más rápido y podrás usarla sin conexión a internet.</p>
-                 <div class="dont-show-again-container">
-                    <input type="checkbox" id="dont-show-install-again-checkbox">
-                    <label for="dont-show-install-again-checkbox">No volver a mostrar</label>
-                </div>
-                <button onclick="hideInstallPwaPopup()">Entendido</button>
+        <!-- Toast para instalar PWA -->
+        <div id="install-toast">
+            <div id="install-toast-content">
+                <p>¡Instala la App!<br><small>Accede rápido y sin conexión.</small></p>
+            </div>
+            <div class="install-toast-buttons">
+                <button class="dismiss-btn" onclick="dismissInstallToast()">No, gracias</button>
+                <button class="install-btn" onclick="installPWA()">Instalar</button>
             </div>
         </div>
 
@@ -787,6 +858,39 @@
                 }
             });
         });
+
+        // PWA Installation Logic
+        let deferredInstallPrompt;
+        const installToast = document.getElementById('install-toast');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredInstallPrompt = e;
+            // Update UI to notify the user they can add to home screen
+            installToast.style.display = 'flex';
+        });
+
+        async function installPWA() {
+            if (!deferredInstallPrompt) {
+                // The deferred prompt isn't available.
+                return;
+            }
+            // Show the install prompt.
+            deferredInstallPrompt.prompt();
+            // Log the result
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, throw it away
+            deferredInstallPrompt = null;
+            // Hide the install toast
+            dismissInstallToast();
+        }
+
+        function dismissInstallToast() {
+            installToast.style.display = 'none';
+        }
 
 
         // Variables globales
@@ -870,22 +974,6 @@
             }
             document.getElementById('manual-analysis-popup').style.display = 'none';
         }
-        
-        function showInstallPwaPopup() {
-             const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-             const hideInstallPrompt = localStorage.getItem('hideInstallPrompt');
-             if (!isStandalone && !hideInstallPrompt) {
-                 document.getElementById('install-pwa-popup').style.display = 'flex';
-             }
-        }
-        
-        function hideInstallPwaPopup() {
-            const dontShowInstallCheckbox = document.getElementById('dont-show-install-again-checkbox');
-            if (dontShowInstallCheckbox.checked) {
-                localStorage.setItem('hideInstallPrompt', 'true');
-            }
-            document.getElementById('install-pwa-popup').style.display = 'none';
-        }
 
         function openFileExplorer() {
             fileInput.click();
@@ -926,10 +1014,6 @@
                 
                 // Abrir la primera sección al inicio
                 document.getElementById('general-stats-section').open = true;
-                
-                // Show install prompt after first successful analysis
-                showInstallPwaPopup();
-
 
             } catch (error) {
                 console.error("Error al procesar el archivo:", error);
