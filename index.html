@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Analizador de Chats de WhatsApp</title>
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#128c7e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -116,7 +116,7 @@
             padding: 10px 15px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color: 0.3s ease;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -200,7 +200,7 @@
             border-radius: 12px;
             background-color: white;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s ease;
+            transition: background-color: 0.3s ease;
         }
 
         details[open] {
@@ -268,7 +268,7 @@
             padding: 10px 15px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color: 0.3s ease;
         }
         
         .controls button:hover {
@@ -364,7 +364,7 @@
             padding: 15px 30px;
             border-radius: 50px;
             cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease;
+            transition: background-color: 0.3s ease, transform 0.2s ease;
             font-weight: 700;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
@@ -460,7 +460,7 @@
             padding: 8px 12px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color: 0.3s ease;
         }
 
         .popup-content button:hover {
@@ -595,7 +595,7 @@
             padding: 8px 12px;
             cursor: pointer;
             font-weight: bold;
-            transition: background-color 0.2s ease;
+            transition: background-color: 0.2s ease;
         }
 
         .install-toast-buttons .install-btn {
@@ -832,7 +832,29 @@
     </div>
 
     <script>
-        // splash screen logic
+        // --- PWA & Initialization Logic ---
+        
+        let deferredInstallPrompt;
+        const installToast = document.getElementById('install-toast');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            installToast.style.display = 'flex';
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Error al registrar el Service Worker:', error);
+                    });
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             const splashScreen = document.getElementById('splash-screen');
             const dontShowSplashCheckbox = document.getElementById('dont-show-splash-again-checkbox');
@@ -846,7 +868,7 @@
                     splashScreen.style.opacity = '0';
                     setTimeout(() => {
                         splashScreen.style.display = 'none';
-                    }, 500); // Wait for fade out transition
+                    }, 500);
                 }, 1500);
             }
 
@@ -859,32 +881,14 @@
             });
         });
 
-        // PWA Installation Logic
-        let deferredInstallPrompt;
-        const installToast = document.getElementById('install-toast');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            // Stash the event so it can be triggered later.
-            deferredInstallPrompt = e;
-            // Update UI to notify the user they can add to home screen
-            installToast.style.display = 'flex';
-        });
-
         async function installPWA() {
             if (!deferredInstallPrompt) {
-                // The deferred prompt isn't available.
                 return;
             }
-            // Show the install prompt.
             deferredInstallPrompt.prompt();
-            // Log the result
             const { outcome } = await deferredInstallPrompt.userChoice;
             console.log(`User response to the install prompt: ${outcome}`);
-            // We've used the prompt, and can't use it again, throw it away
             deferredInstallPrompt = null;
-            // Hide the install toast
             dismissInstallToast();
         }
 
@@ -892,15 +896,14 @@
             installToast.style.display = 'none';
         }
 
+        // --- Main Application Logic ---
 
-        // Variables globales
         let allMessages = [];
         let filteredMessages = [];
         let selectedMessages = new Set();
         let myChart1, myChart2, myChart3, myChart4;
         let senderNames = [];
 
-        // Elementos del DOM
         const fileInput = document.getElementById('fileInput');
         const fileUploadSection = document.getElementById('file-upload-section');
         const mainContent = document.getElementById('main-content');
@@ -918,8 +921,6 @@
         const filteredInfo = document.getElementById('filtered-info');
         const manualAnalysisInfo = document.getElementById('manual-analysis-info');
         const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
-
-        // Elementos del header fijo
         const globalHeader = document.getElementById('global-header');
         const interlocutorNamesEl = document.getElementById('interlocutor-names');
         const totalMessagesHeaderEl = document.getElementById('total-messages-header');
@@ -930,8 +931,6 @@
         const jabCountDistEl = document.getElementById('jab-count-dist');
         const angelesCountDistEl = document.getElementById('angeles-count-dist');
 
-
-        // Cerrar todos los desplegables excepto el que se hace clic
         detailsElements.forEach(details => {
             details.addEventListener('toggle', () => {
                 if (details.open) {
@@ -944,7 +943,6 @@
             });
         });
 
-        // Escuchadores de eventos
         fileInput.addEventListener('change', handleFileSelect);
         messagesContainer.addEventListener('click', toggleMessageSelection);
 
@@ -1012,7 +1010,6 @@
                 renderMessages(allMessages, SENDER_JAB, SENDER_ANGELES);
                 updateDashboard(SENDER_JAB, SENDER_ANGELES);
                 
-                // Abrir la primera sección al inicio
                 document.getElementById('general-stats-section').open = true;
 
             } catch (error) {
@@ -1084,7 +1081,7 @@
             messages.forEach((msg, index) => {
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('whatsapp-message');
-                messageDiv.dataset.index = allMessages.indexOf(msg); // Usar el índice original
+                messageDiv.dataset.index = allMessages.indexOf(msg);
                 if (selectedMessages.has(messageDiv.dataset.index)) {
                      messageDiv.classList.add('selected');
                 }
@@ -1143,7 +1140,6 @@
             renderMessages(filteredMessages, senderNames[0], senderNames[1]);
             updateDashboard(senderNames[0], senderNames[1]);
 
-            // Desplegar la sección de análisis de búsqueda
             searchAnalysisSection.open = true;
         }
 
@@ -1433,19 +1429,6 @@
             if (titleContainer) {
                 titleContainer.innerText = title;
             }
-        }
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(registration => {
-                        console.log('Service Worker registrado con éxito:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('Error al registrar el Service Worker:', error);
-                    });
-            });
         }
     </script>
 </body>
