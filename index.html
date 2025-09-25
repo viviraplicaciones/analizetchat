@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Analizador de Chats de WhatsApp</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#128c7e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,7 +50,7 @@
 
         #messages-container {
             flex: 0 0 35%;
-            background-image: url('https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/fondo_chat.jpg');
+            background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
             background-size: cover;
             background-position: center;
             padding: 20px;
@@ -1253,7 +1253,19 @@
                 titleContainer.innerText = title;
             }
         }
-        
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Error al registrar el Service Worker:', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
