@@ -49,11 +49,11 @@
         }
 
         #messages-container {
-            flex: 0 0 35%;
+            flex: 0 0 40%; /* Changed from 35% to 40% */
             background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
             background-size: cover;
             background-position: center;
-            padding: 20px;
+            padding: 15px; /* Reduced padding */
             overflow-y: auto;
             border-right: 2px solid #ddd;
             display: flex;
@@ -62,10 +62,10 @@
         }
         
         #dashboard-container {
-            flex: 0 0 65%;
+            flex: 0 0 60%; /* Changed from 65% to 60% */
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 15px; /* Reduced padding */
             background-color: #f9f9f9;
             overflow-y: auto;
         }
@@ -76,7 +76,7 @@
             height: var(--header-height);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 15px; /* Reduced padding */
             background-color: white;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             font-weight: 700;
@@ -192,7 +192,7 @@
 
         .dashboard-section {
             background-color: white;
-            padding: 20px;
+            padding: 15px; /* Reduced padding */
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
@@ -215,7 +215,7 @@
         summary {
             font-size: 1.2em;
             font-weight: 700;
-            padding: 20px;
+            padding: 15px; /* Reduced padding */
             color: var(--color-primary);
             cursor: pointer;
             outline: none;
@@ -235,7 +235,7 @@
         }
         
         .dashboard-content {
-            padding: 0 20px 20px;
+            padding: 0 15px 15px; /* Reduced padding */
         }
 
         h2 {
@@ -334,7 +334,7 @@
             text-align: center;
             min-height: 100%;
             background-color: #f0f2f5;
-            padding: 40px;
+            padding: 30px; /* Reduced padding */
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
@@ -344,7 +344,7 @@
         
         #upload-card {
             background-color: rgba(255, 255, 255, 0.9);
-            padding: 40px;
+            padding: 30px; /* Reduced padding */
             border-radius: 20px;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(5px);
@@ -978,7 +978,10 @@
                     url: window.location.href
                 }).then(() => {
                     console.log('Gracias por compartir!');
-                }).catch(console.error);
+                }).catch((error) => {
+                    console.error('Error al compartir:', error);
+                    showMessageBox('No se pudo compartir. Es posible que tu navegador no lo permita en este contexto.');
+                });
             } else {
                 showMessageBox('La función de compartir no está disponible en este navegador.');
             }
@@ -1527,3 +1530,4 @@
     </script>
 </body>
 </html>
+
