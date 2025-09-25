@@ -97,6 +97,11 @@
             gap: 20px;
             align-items: center;
         }
+        
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
 
         #header-info h2 {
             margin: 0;
@@ -109,7 +114,7 @@
             color: #555;
         }
 
-        #new-chat-btn {
+        #new-chat-btn, #install-pwa-btn {
             background-color: var(--color-tertiary);
             color: white;
             border: none;
@@ -122,11 +127,11 @@
             gap: 8px;
         }
 
-        #new-chat-btn:hover {
+        #new-chat-btn:hover, #install-pwa-btn:hover {
             background-color: #20c25a;
         }
         
-        #new-chat-btn svg {
+        #new-chat-btn svg, #install-pwa-btn svg {
             fill: white;
             width: 20px;
             height: 20px;
@@ -687,12 +692,20 @@
                     <p>Total de mensajes: <strong id="total-messages-header">0</strong></p>
                 </div>
             </div>
-            <button id="new-chat-btn" onclick="openFileExplorer()">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                </svg>
-                Nuevo Chat
-            </button>
+            <div class="header-buttons">
+                <button id="install-pwa-btn" onclick="installPWA()" style="display: none;">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.34v7h6.66V9h3.34L12 2z"/>
+                    </svg>
+                    Instalar App
+                </button>
+                <button id="new-chat-btn" onclick="openFileExplorer()">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    Nuevo Chat
+                </button>
+            </div>
         </div>
 
         <!-- Contenido principal con mensajes y dashboard -->
@@ -836,11 +849,13 @@
         
         let deferredInstallPrompt;
         const installToast = document.getElementById('install-toast');
+        const installButton = document.getElementById('install-pwa-btn');
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
             installToast.style.display = 'flex';
+            installButton.style.display = 'flex';
         });
 
         if ('serviceWorker' in navigator) {
@@ -890,6 +905,7 @@
             console.log(`User response to the install prompt: ${outcome}`);
             deferredInstallPrompt = null;
             dismissInstallToast();
+            installButton.style.display = 'none';
         }
 
         function dismissInstallToast() {
