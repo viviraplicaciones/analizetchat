@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@200;300&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --color-primary: #075e54;
@@ -328,13 +330,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; 
+            padding-top: 10vh; 
             text-align: center;
             min-height: 100%;
             background-color: #f0f2f5;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
             background-size: cover;
             background-position: center;
@@ -655,6 +655,21 @@
             display: none;
         }
 
+        #report-modal-content .spinner {
+            margin: 20px auto;
+        }
+
+        #report-actions {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #report-actions button {
+            width: 100%;
+        }
+
 
         @media (max-width: 768px) {
             #main-content {
@@ -814,7 +829,7 @@
                     </svg>
                     Instalar App
                 </button>
-                <button id="new-chat-btn" onclick="resetApp()">
+                <button id="new-chat-btn" onclick="openFileExplorer()">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                     </svg>
@@ -920,6 +935,10 @@
                 </details>
                 
                 <div class="footer-actions">
+                     <button class="action-btn" id="generate-report-btn" onclick="generateReport()">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>
+                        <span>Generar Informe</span>
+                    </button>
                     <button class="action-btn new-chat-footer-btn" onclick="resetApp()">
                         <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
                         <span>Nuevo Chat</span>
@@ -939,6 +958,19 @@
         <div id="message-box" class="message-box">
             <span id="message-text"></span>
             <button onclick="hideMessageBox()">OK</button>
+        </div>
+        
+        <div id="report-modal" class="popup-modal">
+            <div class="popup-content" id="report-modal-content">
+                <h3>Informe de Análisis</h3>
+                <p id="report-status">Generando tu informe en PDF...</p>
+                <div class="spinner" id="report-spinner" style="display: block;"></div>
+                <div id="report-actions">
+                    <button class="action-btn" onclick="downloadPDF()">Descargar PDF</button>
+                    <button class="action-btn" onclick="sharePDF()">Compartir PDF</button>
+                    <button onclick="closeReportModal()">Cerrar</button>
+                </div>
+            </div>
         </div>
 
         <div id="manual-analysis-popup" class="popup-modal">
@@ -968,7 +1000,67 @@
     </div>
 
     <script>
-        
+        // --- IndexedDB & PWA Logic ---
+        let db;
+        let generatedPDF;
+        const DB_NAME = 'chatAnalyzerDB';
+        const STORE_NAME = 'chats';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = event => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                request.onerror = event => {
+                    console.error('Database error:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        function saveChatToDB(messages) {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('Database not open');
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({ id: 1, messages: messages });
+                request.onsuccess = () => resolve();
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+        function getChatFromDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('Database not open');
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(1);
+                request.onsuccess = event => {
+                    resolve(event.target.result ? event.target.result.messages : null);
+                };
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
+        function clearChatFromDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('Database not open');
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = event => reject(event.target.error);
+            });
+        }
+
         let deferredInstallPrompt;
         const installToast = document.getElementById('install-toast');
         const installButton = document.getElementById('install-pwa-btn');
@@ -983,16 +1075,12 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
-                    .then(registration => {
-                        console.log('Service Worker registrado con éxito:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('Error al registrar el Service Worker:', error);
-                    });
+                    .then(registration => console.log('Service Worker registrado:', registration.scope))
+                    .catch(error => console.log('Error al registrar Service Worker:', error));
             });
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             const splashScreen = document.getElementById('splash-screen');
             const dontShowSplashCheckbox = document.getElementById('dont-show-splash-again-checkbox');
 
@@ -1003,28 +1091,29 @@
                 splashScreen.style.display = 'flex';
                 setTimeout(() => {
                     splashScreen.style.opacity = '0';
-                    setTimeout(() => {
-                        splashScreen.style.display = 'none';
-                    }, 500);
+                    setTimeout(() => { splashScreen.style.display = 'none'; }, 500);
                 }, 1500);
             }
 
             dontShowSplashCheckbox.addEventListener('change', () => {
-                if (dontShowSplashCheckbox.checked) {
-                    localStorage.setItem('hideSplashScreen', 'true');
-                } else {
-                    localStorage.removeItem('hideSplashScreen');
-                }
+                localStorage.setItem('hideSplashScreen', dontShowSplashCheckbox.checked ? 'true' : '');
             });
+
+            try {
+                await openDB();
+                const savedChat = await getChatFromDB();
+                if (savedChat && savedChat.length > 0) {
+                    await processChatData(savedChat, false);
+                }
+            } catch (error) {
+                console.error("Error al cargar chat desde DB:", error);
+            }
         });
 
         async function installPWA() {
-            if (!deferredInstallPrompt) {
-                return;
-            }
+            if (!deferredInstallPrompt) return;
             deferredInstallPrompt.prompt();
-            const { outcome } = await deferredInstallPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
+            await deferredInstallPrompt.userChoice;
             deferredInstallPrompt = null;
             dismissInstallToast();
             installButton.style.display = 'none';
@@ -1033,6 +1122,8 @@
         function dismissInstallToast() {
             installToast.style.display = 'none';
         }
+        
+        // --- Main App Logic ---
 
         function shareApp() {
             if (navigator.share) {
@@ -1040,8 +1131,6 @@
                     title: 'Analizador de Chats de WhatsApp',
                     text: 'Sube tu archivo de chat exportado (.txt) para comenzar el análisis. ¡No te preocupes por el tamaño!',
                     url: window.location.href
-                }).then(() => {
-                    console.log('Gracias por compartir!');
                 }).catch((error) => {
                     console.error('Error al compartir:', error);
                     showMessageBox('No se pudo compartir. Es posible que tu navegador no lo permita en este contexto.');
@@ -1052,9 +1141,7 @@
         }
 
         function reportBug() {
-            const email = 'vivirapp2021@gmail.com';
-            const subject = 'Encontré un fallo';
-            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+            window.location.href = `mailto:vivirapp2021@gmail.com?subject=${encodeURIComponent('Encontré un fallo')}`;
         }
 
         let allMessages = [];
@@ -1138,63 +1225,62 @@
 
         async function handleFileSelect(event) {
             const file = event.target.files[0];
-            if (!file) {
-                showMessageBox('No se seleccionó ningún archivo.');
-                return;
-            }
+            if (!file) return;
 
             spinner.style.display = 'block';
-
             try {
+                let text;
                 if (file.name.endsWith('.zip')) {
-                    await processZipFile(file);
+                    const jszip = new JSZip();
+                    const zip = await jszip.loadAsync(file);
+                    let txtFile = null;
+                    for (const filename in zip.files) {
+                        if (filename.endsWith('.txt') && !filename.startsWith('__MACOSX/')) {
+                            txtFile = zip.files[filename];
+                            break;
+                        }
+                    }
+                    if (txtFile) {
+                        text = await txtFile.async('string');
+                    } else {
+                        throw new Error('No se encontró un archivo .txt dentro del .zip.');
+                    }
                 } else if (file.name.endsWith('.txt')) {
-                    const text = await readFileAsync(file);
-                    await processChatText(text);
+                    text = await file.text();
                 } else {
-                    showMessageBox('Formato de archivo no soportado. Por favor, sube un archivo .txt o .zip.');
+                    throw new Error('Formato de archivo no soportado. Sube un .txt o .zip.');
                 }
+                const messages = parseMessages(text);
+                await processChatData(messages, true);
+
             } catch (error) {
-                console.error("Error al procesar el archivo:", error);
+                console.error("Error al procesar archivo:", error);
                 showMessageBox('Hubo un error al procesar el archivo. ' + error.message);
             } finally {
                 spinner.style.display = 'none';
             }
         }
         
-        async function processZipFile(file) {
-            const jszip = new JSZip();
-            const zip = await jszip.loadAsync(file);
-            let txtFile = null;
-            
-            for (const filename in zip.files) {
-                if (filename.endsWith('.txt') && !filename.startsWith('__MACOSX/')) {
-                    txtFile = zip.files[filename];
-                    break;
-                }
-            }
-
-            if (txtFile) {
-                const text = await txtFile.async('string');
-                await processChatText(text);
-            } else {
-                throw new Error('No se encontró un archivo .txt dentro del .zip.');
-            }
-        }
-        
-        async function processChatText(text) {
-            allMessages = parseMessages(text);
-            
-            if (allMessages.length === 0) {
+        async function processChatData(messages, saveToDB = true) {
+            if (!messages || messages.length === 0) {
                 showMessageBox('No se encontraron mensajes válidos. Asegúrate de que el formato del archivo sea correcto.');
                 return;
             }
+            allMessages = messages;
             
+            if (saveToDB) {
+                try {
+                    await saveChatToDB(allMessages);
+                } catch (error) {
+                    console.error('No se pudo guardar el chat en DB:', error);
+                }
+            }
+
             const uniqueAuthors = new Set(allMessages.map(m => m.author));
             senderNames = Array.from(uniqueAuthors).sort();
             
-            const SENDER_JAB = senderNames.find(name => name.toLowerCase().includes('jab')) || senderNames[0] || 'Autor 1';
-            const SENDER_ANGELES = senderNames.find(name => name.toLowerCase().includes('ángeles')) || senderNames[1] || 'Autor 2';
+            const SENDER_JAB = senderNames[0] || 'Autor 1';
+            const SENDER_ANGELES = senderNames[1] || 'Autor 2';
 
             filteredMessages = [...allMessages];
             
@@ -1208,16 +1294,6 @@
             document.getElementById('general-stats-section').open = true;
         }
 
-
-        function readFileAsync(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsText(file);
-            });
-        }
-
         function parseMessages(text) {
             const messages = [];
             const lines = text.split('\n');
@@ -1227,20 +1303,15 @@
             lines.forEach(line => {
                 const match = line.match(regex);
                 if (match) {
-                    if (currentMessage) {
-                        messages.push(currentMessage);
-                    }
+                    if (currentMessage) messages.push(currentMessage);
                     const [, dateStr, timeStr, ampmStr, author, text] = match;
                     const [day, month, year] = dateStr.replace(/[\.-]/g, '/').split('/');
                     const fullYear = year.length === 2 ? `20${year}` : year;
 
                     let [hours, minutes] = timeStr.split(':').map(Number);
                     if (ampmStr) {
-                        if (ampmStr.toLowerCase().includes('p.m.') && hours < 12) {
-                            hours += 12;
-                        } else if (ampmStr.toLowerCase().includes('a.m.') && hours === 12) {
-                            hours = 0;
-                        }
+                        if (ampmStr.toLowerCase().includes('p.m.') && hours < 12) hours += 12;
+                        else if (ampmStr.toLowerCase().includes('a.m.') && hours === 12) hours = 0;
                     }
                     const timestamp = new Date(fullYear, month - 1, day, hours, minutes);
                     
@@ -1251,27 +1322,26 @@
                         time: timeStr + (ampmStr ? ` ${ampmStr.trim()}` : ''),
                         author: author.trim(),
                         text: messageText,
-                        timestamp
+                        timestamp: timestamp.toISOString() 
                     };
                 } else if (currentMessage) {
                     currentMessage.text += '\n' + line.trim();
                 }
             });
-
-            if (currentMessage) {
-                messages.push(currentMessage);
-            }
-
-            return messages;
+            if (currentMessage) messages.push(currentMessage);
+            
+            return messages.map(m => ({...m, timestamp: new Date(m.timestamp)}));
         }
 
         function renderMessages(messages, SENDER_JAB, SENDER_ANGELES) {
             messagesContainer.innerHTML = '';
-            messages.forEach((msg, index) => {
+            messages.forEach((msg) => {
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('whatsapp-message');
-                messageDiv.dataset.index = allMessages.indexOf(msg);
-                if (selectedMessages.has(messageDiv.dataset.index)) {
+                const originalIndex = allMessages.findIndex(m => m.timestamp.getTime() === msg.timestamp.getTime() && m.text === msg.text);
+                messageDiv.dataset.index = originalIndex;
+
+                if (selectedMessages.has(originalIndex)) {
                      messageDiv.classList.add('selected');
                 }
 
@@ -1281,11 +1351,9 @@
                     messageDiv.classList.add('recipient');
                 }
 
-                const messageTextContent = msg.text.replace(/\n/g, '<br>');
-                
                 messageDiv.innerHTML = `
                     <div class="message-author">${msg.author}</div>
-                    <div class="message-text">${messageTextContent}</div>
+                    <div class="message-text">${msg.text.replace(/\n/g, '<br>')}</div>
                     <div class="message-time">${msg.date}, ${msg.time}</div>
                 `;
                 messagesContainer.appendChild(messageDiv);
@@ -1303,7 +1371,6 @@
             angelesNameStatsEl.innerText = SENDER_ANGELES;
             jabNameDistEl.innerText = SENDER_JAB;
             angelesNameDistEl.innerText = SENDER_ANGELES;
-
 
             document.getElementById('jab-count').innerText = jabCount;
             document.getElementById('angeles-count').innerText = angelesCount;
@@ -1341,7 +1408,8 @@
             updateDashboard(senderNames[0], senderNames[1]);
         }
         
-        function resetApp() {
+        async function resetApp() {
+            await clearChatFromDB();
             allMessages = [];
             filteredMessages = [];
             selectedMessages.clear();
@@ -1384,7 +1452,7 @@
         
         function clearSelection() {
             selectedMessages.clear();
-            renderMessages(allMessages, senderNames[0], senderNames[1]);
+            renderMessages(filteredMessages, senderNames[0], senderNames[1]);
             manualAnalysisInfo.style.display = 'none';
             customChartContainer.style.display = 'none';
             customChartTitleInput.value = '';
@@ -1401,19 +1469,11 @@
             const angelesCount = messagesToAnalyze.filter(m => m.author === senderNames[1]).length;
             let customTitle = customChartTitleInput.value.trim().toUpperCase() || 'GRÁFICA DE SELECCIÓN PERSONALIZADA';
             
-            const totalMessages = jabCount + angelesCount;
-            document.getElementById('selected-total-count').innerText = totalMessages;
+            document.getElementById('selected-total-count').innerText = messagesToAnalyze.length;
             document.getElementById('selected-jab-name').innerText = senderNames[0];
             document.getElementById('selected-jab-count').innerText = jabCount;
             document.getElementById('selected-angeles-name').innerText = senderNames[1];
             document.getElementById('selected-angeles-count').innerText = angelesCount;
-
-            const isJabMajority = jabCount > angelesCount;
-            const majorityColor = 'rgba(7, 94, 84, 0.8)';
-            const minorityColor = 'rgba(18, 140, 126, 0.8)';
-
-            const labels = [senderNames[0], senderNames[1]];
-            const data = [jabCount, angelesCount];
 
             customChartContainer.style.display = 'block';
             customChartTitleText.innerText = customTitle;
@@ -1422,32 +1482,18 @@
             myChart4 = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels,
+                    labels: [senderNames[0], senderNames[1]],
                     datasets: [{
-                        label: 'Número de Mensajes',
-                        data: data,
-                        backgroundColor: [majorityColor, minorityColor],
-                        borderColor: ['#fff', '#fff'],
+                        data: [jabCount, angelesCount],
+                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
+                        borderColor: '#fff',
                         borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: { 
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 20,
-                                boxHeight: 20,
-                                padding: 20,
-                                pointStyle: 'rectRounded',
-                                
-                            }
-                        },
-                        title: {
-                            display: false,
-                        }
+                        legend: { position: 'top' }
                     }
                 }
             });
@@ -1481,25 +1527,14 @@
                     datasets: [{
                         label: 'NÚMERO DE MENSAJES',
                         data: [jabCount, angelesCount],
-                        backgroundColor: [
-                            'rgba(7, 94, 84, 0.8)',
-                            'rgba(18, 140, 126, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(7, 94, 84, 1)',
-                            'rgba(18, 140, 126, 1)'
-                        ],
+                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
+                        borderColor: ['rgba(7, 94, 84, 1)', 'rgba(18, 140, 126, 1)'],
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        title: {
-                            display: false,
-                        }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: { y: { beginAtZero: true } }
                 }
             });
@@ -1515,35 +1550,12 @@
                     datasets: [{
                         label: 'NÚMERO DE MENSAJES',
                         data: [jabCount, angelesCount],
-                        backgroundColor: [
-                            'rgba(7, 94, 84, 0.8)',
-                            'rgba(18, 140, 126, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(7, 94, 84, 1)',
-                            'rgba(18, 140, 126, 1)'
-                        ],
+                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
+                        borderColor: ['rgba(7, 94, 84, 1)', 'rgba(18, 140, 126, 1)'],
                         borderWidth: 1
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 20,
-                                boxHeight: 20,
-                                padding: 20,
-                                pointStyle: 'rectRounded',
-                            }
-                        },
-                        title: {
-                            display: false,
-                        }
-                    }
-                }
+                options: { responsive: true }
             });
         }
         
@@ -1553,34 +1565,35 @@
             if (myChart2) myChart2.destroy();
 
             let labels, data, title;
-            
+            const counts = {};
+
             if (timeframe === 'hour') {
                 labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
                 data = Array(24).fill(0);
-                filteredMessages.forEach(msg => {
-                    data[msg.timestamp.getHours()]++;
-                });
-                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+                filteredMessages.forEach(msg => { data[msg.timestamp.getHours()]++; });
+                title = 'Tendencia de Mensajes por Hora';
             } else if (timeframe === 'day') {
-                labels = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+                labels = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                 data = Array(7).fill(0);
-                filteredMessages.forEach(msg => {
-                    data[msg.timestamp.getDay()]++;
-                });
-                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+                filteredMessages.forEach(msg => { data[msg.timestamp.getDay()]++; });
+                title = 'Tendencia de Mensajes por Día';
             } else if (timeframe === 'month') {
                 const monthlyData = {};
                 filteredMessages.forEach(msg => {
-                    const month = msg.timestamp.getMonth();
-                    const year = msg.timestamp.getFullYear();
-                    const key = `${month + 1}/${year}`;
+                    const key = `${msg.timestamp.getMonth() + 1}/${msg.timestamp.getFullYear()}`;
                     monthlyData[key] = (monthlyData[key] || 0) + 1;
                 });
-                labels = Object.keys(monthlyData);
-                data = Object.values(monthlyData);
-                title = 'ANÁLISIS DE TENDENCIA DE MENSAJES';
+                const sortedKeys = Object.keys(monthlyData).sort((a,b) => {
+                    const [m1, y1] = a.split('/');
+                    const [m2, y2] = b.split('/');
+                    return new Date(y1, m1-1) - new Date(y2, m2-1);
+                });
+                labels = sortedKeys;
+                data = sortedKeys.map(key => monthlyData[key]);
+                title = 'Tendencia de Mensajes por Mes';
             }
             
+            temporalChartTitleText.innerText = title.toUpperCase();
             myChart2 = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1596,33 +1609,109 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        title: {
-                            display: false,
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    layout: {
-                        padding: {
-                            top: 20
-                        }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
-            const titleContainer = document.getElementById('temporal-chart-title-text');
-            if (titleContainer) {
-                titleContainer.innerText = title;
+        }
+        
+        // --- Report Generation ---
+        function closeReportModal() {
+            document.getElementById('report-modal').style.display = 'none';
+        }
+
+        async function generateReport() {
+            const reportModal = document.getElementById('report-modal');
+            const reportStatus = document.getElementById('report-status');
+            const reportSpinner = document.getElementById('report-spinner');
+            const reportActions = document.getElementById('report-actions');
+
+            reportModal.style.display = 'flex';
+            reportStatus.textContent = 'Generando tu informe en PDF...';
+            reportSpinner.style.display = 'block';
+            reportActions.style.display = 'none';
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                doc.setFontSize(22);
+                doc.text('Informe de Análisis de Chat', 105, 20, { align: 'center' });
+
+                doc.setFontSize(12);
+                doc.text(`Conversación entre: ${senderNames.join(' y ')}`, 105, 30, { align: 'center' });
+                doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 105, 38, { align: 'center' });
+
+                doc.setFontSize(16);
+                doc.text('Estadísticas Generales', 14, 60);
+                doc.setFontSize(12);
+                doc.text(`- Total de Mensajes: ${allMessages.length}`, 14, 70);
+                doc.text(`- Mensajes de ${senderNames[0]}: ${allMessages.filter(m => m.author === senderNames[0]).length}`, 14, 78);
+                doc.text(`- Mensajes de ${senderNames[1]}: ${allMessages.filter(m => m.author === senderNames[1]).length}`, 14, 86);
+
+                const chartElements = [
+                    { id: 'messagesByAuthorChart', title: 'Distribución de Mensajes' },
+                    { id: 'temporalMessagesChart', title: 'Tendencia de Mensajes' }
+                ];
+                
+                let yPos = 100;
+
+                for (const chartInfo of chartElements) {
+                    const chartCanvas = document.getElementById(chartInfo.id);
+                    if (chartCanvas) {
+                        if (yPos > 220) { 
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        const canvasImage = await html2canvas(chartCanvas.parentElement);
+                        const imgData = canvasImage.toDataURL('image/png');
+                        doc.setFontSize(16);
+                        doc.text(chartInfo.title, 14, yPos);
+                        doc.addImage(imgData, 'PNG', 14, yPos + 8, 180, 90);
+                        yPos += 110;
+                    }
+                }
+                
+                generatedPDF = doc;
+                reportStatus.textContent = '¡Tu informe está listo!';
+                reportSpinner.style.display = 'none';
+                reportActions.style.display = 'flex';
+
+            } catch(error) {
+                console.error("Error al generar PDF:", error);
+                showMessageBox("No se pudo generar el informe en PDF.");
+                closeReportModal();
             }
         }
+
+        function downloadPDF() {
+            if (generatedPDF) {
+                generatedPDF.save('informe-chat-whatsapp.pdf');
+            }
+        }
+
+        async function sharePDF() {
+            if (!generatedPDF) return;
+            try {
+                const pdfBlob = generatedPDF.output('blob');
+                const pdfFile = new File([pdfBlob], "informe-chat.pdf", { type: "application/pdf" });
+
+                if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    await navigator.share({
+                        files: [pdfFile],
+                        title: 'Informe de Chat',
+                        text: `Aquí está el informe de análisis del chat entre ${senderNames.join(' y ')}.`,
+                    });
+                } else {
+                    showMessageBox('La función de compartir archivos no es compatible con este navegador.');
+                }
+            } catch (error) {
+                console.error("Error al compartir PDF:", error);
+                showMessageBox("No se pudo compartir el archivo.");
+            }
+        }
+
     </script>
 </body>
 </html>
-"
-- El boton de nuevo chat lo vamos a pasar al principio de la fila y los otros 2 botones quedaran despues de este
-- el boton de nuevo chat no esta funcionando en la version de escritorio
 
