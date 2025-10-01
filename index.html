@@ -9,8 +9,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Analizador de Chats">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg">
-    <link rel="icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg" type="image/x-icon">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png">
+    <link rel="icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@200;300&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -846,6 +846,10 @@
                 padding-top: 30px;
                 min-height: calc(100% - 60px);
             }
+            
+            #file-upload-section .footer-actions .new-chat-footer-btn {
+                 display: none;
+            }
 
             #file-upload-section h1 {
                 font-size: 2.1em;
@@ -904,11 +908,7 @@
                 justify-content: space-around;
             }
             
-            #file-upload-section .footer-actions .new-chat-footer-btn {
-                display: none;
-            }
-
-            .dashboard-container .new-chat-footer-btn {
+            #dashboard-container .footer-actions {
                 display: flex;
             }
         }
@@ -918,7 +918,7 @@
 <body>
     
     <div id="splash-screen" style="display: none;">
-        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg" alt="App Logo">
+        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" alt="App Logo">
         <div class="dont-show-again-container">
             <input type="checkbox" id="dont-show-splash-again-checkbox">
             <label for="dont-show-splash-again-checkbox">No volver a mostrar</label>
@@ -1156,12 +1156,87 @@
     </div>
 
     <script>
-        // --- IndexedDB & PWA Logic ---
-        let db;
-        let generatedPDF;
+        // --- Global Variables & Initial Setup ---
+        let db, generatedPDF;
+        let allMessages = [], filteredMessages = [], selectedMessages = new Set();
+        let myChart1, myChart2, myChart3, myChart4;
+        let senderNames = [];
+
         const DB_NAME = 'chatAnalyzerDB';
         const STORE_NAME = 'chats';
+        
+        // --- DOM Elements ---
+        const fileInput = document.getElementById('fileInput');
+        const fileUploadSection = document.getElementById('file-upload-section');
+        const mainContent = document.getElementById('main-content');
+        const messagesContainer = document.getElementById('messages-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const spinner = document.getElementById('loading-spinner');
+        const keywordInput = document.getElementById('keywordInput');
+        const searchAnalysisSection = document.getElementById('search-analysis-section');
+        const manualAnalysisSection = document.getElementById('manual-analysis-section');
+        const customChartContainer = document.getElementById('custom-chart-container');
+        const customChartTitleInput = document.getElementById('customChartTitle');
+        const customChartTitleText = document.getElementById('custom-chart-title-text');
+        const temporalChartTitleText = document.getElementById('temporal-chart-title-text');
+        const detailsElements = document.querySelectorAll('details');
+        const filteredInfo = document.getElementById('filtered-info');
+        const manualAnalysisInfo = document.getElementById('manual-analysis-info');
+        const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
+        const globalHeader = document.getElementById('global-header');
+        const interlocutorNamesEl = document.getElementById('interlocutor-names');
+        const totalMessagesHeaderEl = document.getElementById('total-messages-header');
+        const jabNameStatsEl = document.getElementById('jab-name-stats');
+        const angelesNameStatsEl = document.getElementById('angeles-name-stats');
+        const jabNameDistEl = document.getElementById('jab-name-dist');
+        const angelesNameDistEl = document.getElementById('angeles-name-dist');
+        const jabCountDistEl = document.getElementById('jab-count-dist');
+        const angelesCountDistEl = document.getElementById('angeles-count-dist');
 
+        
+        // --- Dark Mode ---
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const darkModeToggleInitial = document.getElementById('dark-mode-toggle-initial');
+        const themeIcon = document.getElementById('theme-icon');
+        const sunIcon = `<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.64 5.64c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L5.64 5.64zm12.73 12.73c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.06-1.06zM18.36 5.64l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zM4.58 18.36l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.03.39 1.41 0z"/>`;
+        const moonIcon = `<path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>`;
+        
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.innerHTML = sunIcon;
+                darkModeToggleInitial.checked = true;
+                Chart.defaults.color = '#e9edef';
+                Chart.defaults.borderColor = '#374248';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeIcon.innerHTML = moonIcon;
+                darkModeToggleInitial.checked = false;
+                Chart.defaults.color = '#111b21';
+                Chart.defaults.borderColor = '#ddd';
+            }
+            if (typeof myChart1 !== 'undefined' && myChart1) {
+                const originalSenderNames = Array.from(new Set(allMessages.map(m => m.author))).sort();
+                updateDashboard(senderNames[0], senderNames[1], originalSenderNames);
+            }
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        }
+
+        darkModeToggle.addEventListener('click', toggleTheme);
+        darkModeToggleInitial.addEventListener('change', toggleTheme);
+        
+        // Apply saved theme on initial load
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        applyTheme(savedTheme);
+
+
+        // --- IndexedDB & PWA Logic ---
         function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, 1);
@@ -1255,6 +1330,12 @@
                 localStorage.setItem('hideSplashScreen', dontShowSplashCheckbox.checked ? 'true' : '');
             });
 
+            document.getElementById('manual-analysis-section').addEventListener('toggle', (event) => {
+                if (event.currentTarget.open) {
+                    showManualAnalysisPopup();
+                }
+            });
+
             try {
                 await openDB();
                 const savedChat = await getChatFromDB();
@@ -1300,57 +1381,6 @@
             window.location.href = `mailto:vivirapp2021@gmail.com?subject=${encodeURIComponent('Encontré un fallo')}`;
         }
 
-        let allMessages = [];
-        let filteredMessages = [];
-        let selectedMessages = new Set();
-        let myChart1, myChart2, myChart3, myChart4;
-        let senderNames = [];
-
-        const fileInput = document.getElementById('fileInput');
-        const fileUploadSection = document.getElementById('file-upload-section');
-        const mainContent = document.getElementById('main-content');
-        const messagesContainer = document.getElementById('messages-container');
-        const dashboardContainer = document.getElementById('dashboard-container');
-        const spinner = document.getElementById('loading-spinner');
-        const keywordInput = document.getElementById('keywordInput');
-        const searchAnalysisSection = document.getElementById('search-analysis-section');
-        const manualAnalysisSection = document.getElementById('manual-analysis-section');
-        const customChartContainer = document.getElementById('custom-chart-container');
-        const customChartTitleInput = document.getElementById('customChartTitle');
-        const customChartTitleText = document.getElementById('custom-chart-title-text');
-        const temporalChartTitleText = document.getElementById('temporal-chart-title-text');
-        const detailsElements = document.querySelectorAll('details');
-        const filteredInfo = document.getElementById('filtered-info');
-        const manualAnalysisInfo = document.getElementById('manual-analysis-info');
-        const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
-        const globalHeader = document.getElementById('global-header');
-        const interlocutorNamesEl = document.getElementById('interlocutor-names');
-        const totalMessagesHeaderEl = document.getElementById('total-messages-header');
-        const jabNameStatsEl = document.getElementById('jab-name-stats');
-        const angelesNameStatsEl = document.getElementById('angeles-name-stats');
-        const jabNameDistEl = document.getElementById('jab-name-dist');
-        const angelesNameDistEl = document.getElementById('angeles-name-dist');
-        const jabCountDistEl = document.getElementById('jab-count-dist');
-        const angelesCountDistEl = document.getElementById('angeles-count-dist');
-
-        detailsElements.forEach(details => {
-            details.addEventListener('toggle', () => {
-                if (details.open) {
-                    detailsElements.forEach(otherDetails => {
-                        if (otherDetails !== details) {
-                            otherDetails.open = false;
-                        }
-                    });
-                }
-            });
-        });
-        
-        document.getElementById('manual-analysis-section').addEventListener('toggle', (event) => {
-            if(event.currentTarget.open) {
-                showManualAnalysisPopup();
-            }
-        });
-
         fileInput.addEventListener('change', handleFileSelect);
         messagesContainer.addEventListener('click', toggleMessageSelection);
 
@@ -1391,11 +1421,10 @@
             try {
                 let text;
                 if (file.name.endsWith('.zip')) {
-                    const jszip = new JSZip();
-                    const zip = await jszip.loadAsync(file);
+                    const zip = await JSZip.loadAsync(file);
                     let txtFile = null;
                     for (const filename in zip.files) {
-                        if (filename.endsWith('.txt') && !filename.startsWith('__MACOSX/')) {
+                        if (filename.endsWith('.txt') && !zip.files[filename].dir) {
                             txtFile = zip.files[filename];
                             break;
                         }
@@ -1418,6 +1447,7 @@
                 showMessageBox('Hubo un error al procesar el archivo. ' + error.message);
             } finally {
                 spinner.style.display = 'none';
+                event.target.value = ''; 
             }
         }
         
@@ -1964,51 +1994,6 @@
                 closeReportModal();
             }
         }
-        
-        // --- Dark Mode ---
-        const darkModeToggle = document.getElementById('dark-mode-toggle');
-        const darkModeToggleInitial = document.getElementById('dark-mode-toggle-initial');
-        const themeIcon = document.getElementById('theme-icon');
-        const sunIcon = `<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.64 5.64c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L5.64 5.64zm12.73 12.73c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.06-1.06zM18.36 5.64l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zM4.58 18.36l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.03.39 1.41 0z"/>`;
-        const moonIcon = `<path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>`;
-
-        function applyTheme(theme) {
-            if (theme === 'dark') {
-                document.body.classList.add('dark-mode');
-                themeIcon.innerHTML = sunIcon;
-                darkModeToggleInitial.checked = true;
-                Chart.defaults.color = '#e9edef';
-                Chart.defaults.borderColor = '#374248';
-            } else {
-                document.body.classList.remove('dark-mode');
-                themeIcon.innerHTML = moonIcon;
-                darkModeToggleInitial.checked = false;
-                Chart.defaults.color = '#111b21';
-                Chart.defaults.borderColor = '#ddd';
-            }
-            // Re-render charts if they exist
-            if(myChart1) {
-                myChart1.destroy();
-                myChart2.destroy();
-                updateDashboard(senderNames[0], senderNames[1], Array.from(new Set(allMessages.map(m=>m.author))).sort());
-            }
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-        }
-
-        darkModeToggle.addEventListener('click', toggleTheme);
-        darkModeToggleInitial.addEventListener('change', toggleTheme);
-
-        // Apply saved theme on initial load
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        applyTheme(savedTheme);
-
-
     </script>
 </body>
 </html>
