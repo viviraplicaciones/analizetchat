@@ -1414,12 +1414,13 @@
         function openFileExplorer() {
             fileInput.click();
         }
-
+        
         async function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             spinner.style.display = 'block';
+            
             try {
                 let text;
                 if (file.name.endsWith('.zip')) {
@@ -1441,14 +1442,34 @@
                 } else {
                     throw new Error('Formato de archivo no soportado. Sube un .txt o .zip.');
                 }
-                const messages = parseMessages(text);
-                await processChatData(messages, true);
+
+                // Usar el Web Worker para el parseo
+                const worker = new Worker('parser.worker.js');
+                worker.postMessage(text);
+
+                worker.onmessage = async (e) => {
+                    const messagesFromWorker = e.data;
+                    worker.terminate();
+
+                    if (!messagesFromWorker || messagesFromWorker.length === 0) {
+                        throw new Error('No se encontraron mensajes válidos en el archivo.');
+                    }
+                    
+                    const messages = messagesFromWorker.map(m => ({...m, timestamp: new Date(m.timestamp)}));
+                    await processChatData(messages, true);
+                    spinner.style.display = 'none';
+                };
+
+                worker.onerror = (e) => {
+                    worker.terminate();
+                    throw new Error('Error al procesar el archivo en segundo plano.');
+                };
 
             } catch (error) {
                 console.error("Error al procesar archivo:", error);
                 showMessageBox('Hubo un error al procesar el archivo. ' + error.message);
-            } finally {
                 spinner.style.display = 'none';
+            } finally {
                 event.target.value = ''; 
             }
         }
@@ -1487,45 +1508,6 @@
             updateDashboard(SENDER_JAB, SENDER_ANGELES, originalSenderNames);
             
             document.getElementById('general-stats-section').open = true;
-        }
-
-        function parseMessages(text) {
-            const messages = [];
-            const lines = text.split('\n');
-            const regex = /^(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}),\s*(\d{1,2}:\d{2})\s*([ap]\.\s*m\.\s*)?\s*-\s*([^:]+):\s*(.*)/i;
-            let currentMessage = null;
-
-            lines.forEach(line => {
-                const match = line.match(regex);
-                if (match) {
-                    if (currentMessage) messages.push(currentMessage);
-                    const [, dateStr, timeStr, ampmStr, author, text] = match;
-                    const [day, month, year] = dateStr.replace(/[\.-]/g, '/').split('/');
-                    const fullYear = year.length === 2 ? `20${year}` : year;
-
-                    let [hours, minutes] = timeStr.split(':').map(Number);
-                    if (ampmStr) {
-                        if (ampmStr.toLowerCase().includes('p.m.') && hours < 12) hours += 12;
-                        else if (ampmStr.toLowerCase().includes('a.m.') && hours === 12) hours = 0;
-                    }
-                    const timestamp = new Date(fullYear, month - 1, day, hours, minutes);
-                    
-                    const messageText = text.trim().toLowerCase() === '<multimedia omitido>' ? 'Multimedia omitido' : text.trim();
-
-                    currentMessage = {
-                        date: dateStr,
-                        time: timeStr + (ampmStr ? ` ${ampmStr.trim()}` : ''),
-                        author: author.trim(),
-                        text: messageText,
-                        timestamp: timestamp.toISOString() 
-                    };
-                } else if (currentMessage) {
-                    currentMessage.text += '\n' + line.trim();
-                }
-            });
-            if (currentMessage) messages.push(currentMessage);
-            
-            return messages.map(m => ({...m, timestamp: new Date(m.timestamp)}));
         }
 
         function renderMessages(messages, SENDER_JAB, SENDER_ANGELES) {
@@ -1999,3 +1981,4 @@
     </script>
 </body>
 </html>
+
