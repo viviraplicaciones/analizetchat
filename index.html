@@ -212,7 +212,7 @@
 
         .dashboard-section {
             background-color: var(--color-surface);
-            padding: 15px;
+            /* padding: 15px; */
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 15px;
@@ -1123,6 +1123,8 @@
                 <div class="spinner" id="report-spinner" style="display: block;"></div>
                 <div id="report-actions">
                     <button class="action-btn" onclick="downloadPDF()">Descargar PDF</button>
+                    <button id="new-chat-btn" onclick="openFileExplorer()">Nuevo Chat</button>
+                    
                     <button class="action-btn" onclick="sharePDF()">Compartir PDF</button>
                     <button onclick="closeReportModal()">Cerrar</button>
                 </div>
@@ -1997,4 +1999,3 @@
     </script>
 </body>
 </html>
-
