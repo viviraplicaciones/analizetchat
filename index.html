@@ -2,1983 +2,1358 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Analizador de Chats de WhatsApp</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#128c7e">
+    <meta name="description" content="Analiza tus chats de WhatsApp. Conversaciones ilimitadas.">
+    
+    <!-- iOS support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Analizador de Chats">
+    <meta name="apple-mobile-web-app-title" content="Analizador WA">
+    
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png">
     <link rel="icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@200;300&display=swap" rel="stylesheet">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <style>
         :root {
             --color-primary: #075e54;
             --color-secondary: #128c7e;
             --color-tertiary: #25d366;
-            --color-bg: #f0f2f5;
+            --color-bg: #f2f2f7; /* iOS like background */
             --color-surface: #ffffff;
             --color-text-primary: #111b21;
-            --color-text-secondary: #555;
-            --color-border: #ddd;
-            --color-msg-in: #DCF8C6;
-            --color-msg-out: #E0E0E0;
+            --color-text-secondary: #8696a0;
+            --color-border: #e9edef;
+            --color-msg-in: #d9fdd3;
+            --color-msg-out: #ffffff;
             --font-family-title: 'Roboto Condensed', sans-serif;
             --font-family-content: 'Roboto', sans-serif;
             --header-height: 60px;
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+            --shadow-subtle: 0 1px 2px rgba(0,0,0,0.06);
+            --radius-md: 12px;
+            --radius-lg: 16px;
         }
 
         body.dark-mode {
-            --color-primary: #128c7e;
-            --color-secondary: #25d366;
-            --color-tertiary: #075e54;
+            --color-primary: #00a884;
+            --color-secondary: #00a884;
+            --color-tertiary: #005c4b;
             --color-bg: #111b21;
             --color-surface: #202c33;
             --color-text-primary: #e9edef;
-            --color-text-secondary: #aebac1;
-            --color-border: #374248;
+            --color-text-secondary: #8696a0;
+            --color-border: #2a3942;
             --color-msg-in: #005c4b;
             --color-msg-out: #202c33;
+            --shadow-subtle: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body, html {
             margin: 0;
             padding: 0;
+            width: 100%;
             height: 100%;
             font-family: var(--font-family-content);
             background-color: var(--color-bg);
             color: var(--color-text-primary);
+            overflow: hidden;
         }
         
         #app-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
-        }
-
-        #main-content {
-            display: flex;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        #messages-container {
-            flex: 0 0 40%;
-            background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
-            background-size: cover;
-            background-position: center;
-            padding: 15px;
-            overflow-y: auto;
-            border-right: 2px solid var(--color-border);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        #dashboard-container {
-            flex: 0 0 60%;
-            display: flex;
-            flex-direction: column;
-            padding: 15px;
             background-color: var(--color-bg);
-            overflow-y: auto;
         }
 
+        /* --- Header Styles --- */
         #global-header {
             width: 100%;
             height: var(--header-height);
             display: flex;
             align-items: center;
-            padding: 0 15px;
+            padding: 0 16px;
+            padding-top: var(--safe-area-top);
             background-color: var(--color-surface);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            font-weight: 700;
+            border-bottom: 1px solid var(--color-border);
             justify-content: space-between;
-            position: fixed;
-            top: 0;
-            left: 0;
             z-index: 100;
-        }
-        
-        #main-content {
-            margin-top: var(--header-height);
+            flex-shrink: 0;
         }
 
         #header-info {
             display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        
-        .header-buttons {
-            display: flex;
-            gap: 10px;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+            max-width: 45%;
         }
 
-        #header-info h2 {
+        #interlocutor-names {
             margin: 0;
-            font-size: 1.2em;
+            font-size: 1rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             color: var(--color-text-primary);
         }
-
-        #header-info p {
-            margin: 0;
-            font-size: 0.9em;
+        
+        #header-stats-preview {
+            font-size: 0.75rem;
             color: var(--color-text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        #new-chat-btn, #install-pwa-btn {
-            background-color: var(--color-secondary);
-            color: white;
+        .header-buttons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
             border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
+            padding: 8px;
             cursor: pointer;
-            transition: background-color: 0.3s ease;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            color: var(--color-text-primary);
+            transition: background 0.2s;
+        }
+        
+        .icon-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        
+        body.dark-mode .icon-btn:hover {
+            background-color: rgba(255,255,255,0.1);
         }
 
-        #new-chat-btn:hover, #install-pwa-btn:hover {
-            background-color: #20c25a;
+        .icon-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
         }
         
-        #new-chat-btn svg, #install-pwa-btn svg, #dark-mode-toggle svg {
-            fill: white;
-            width: 20px;
-            height: 20px;
+        /* --- Main Layout --- */
+        #main-content {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #messages-container {
+            flex: 1;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-size: 400px; /* Subtle pattern */
+            background-color: #efe7dd; /* Default WA bg color */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 12px;
+            padding-bottom: 80px; 
         }
         
+        body.dark-mode #messages-container {
+            background-color: #0b141a;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-blend-mode: overlay;
+        }
+        
+        #dashboard-container {
+            flex: 1;
+            display: flex; 
+            flex-direction: column;
+            padding: 16px;
+            background-color: var(--color-bg);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            border-left: 1px solid var(--color-border);
+            max-width: 450px; 
+            padding-bottom: 100px;
+        }
+
+        /* --- Message Bubbles --- */
         .whatsapp-message {
-            max-width: 80%;
-            padding: 10px 12px;
+            max-width: 85%;
+            padding: 6px 9px 8px 9px;
             border-radius: 10px;
             position: relative;
             word-wrap: break-word;
-            box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+            font-size: 14.5px;
+            line-height: 1.35;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            color: var(--color-text-primary);
-        }
-
-        .whatsapp-message:hover {
-            transform: scale(1.01);
+            transition: transform 0.1s, box-shadow 0.2s;
         }
         
+        .whatsapp-message:active {
+            transform: scale(0.98);
+        }
+
         .whatsapp-message.sender {
             background-color: var(--color-msg-in);
-            align-self: flex-end;
-            border-bottom-right-radius: 2px;
+            align-self: flex-start;
+            border-top-left-radius: 0;
         }
         
         .whatsapp-message.recipient {
             background-color: var(--color-msg-out);
-            align-self: flex-start;
-            border-bottom-left-radius: 2px;
+            align-self: flex-end;
+            border-top-right-radius: 0;
         }
-
+        
         .whatsapp-message.selected {
-            border: 2px solid var(--color-primary);
-            box-shadow: 0 0 10px rgba(7, 94, 84, 0.5);
+            outline: 2px solid var(--color-tertiary);
+            outline-offset: 2px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        
-        .message-author {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: var(--color-text-primary);
-            font-family: var(--font-family-title);
-        }
-        
-        .message-text {
-            font-size: 16px;
-            color: var(--color-text-primary);
-        }
-        
-        .message-time {
-            font-size: 14px;
+
+        .msg-meta {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 2px;
+            font-size: 10px;
             color: var(--color-text-secondary);
-            margin-top: 5px;
-            text-align: right;
-            display: block;
-        }
-
-        .dashboard-section {
-            background-color: var(--color-surface);
-            /* padding: 15px; */
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 15px;
+            opacity: 0.8;
+            gap: 4px;
         }
         
-        details {
-            margin-bottom: 15px;
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
-            background-color: var(--color-surface);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: background-color: 0.3s ease;
+        .msg-author {
+            font-weight: 500;
+            color: var(--color-text-secondary); /* More subtle author name */
+            font-size: 12px;
+            margin-bottom: 2px;
         }
+        
+        .sender .msg-author { color: var(--color-primary); }
 
-        details[open] {
-            background-color: #f0f2f5;
-        }
-        body.dark-mode details[open] {
-            background-color: #2a3942;
+        /* --- Dashboard Components --- */
+        details {
+            background-color: var(--color-surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-subtle);
+            margin-bottom: 12px;
+            overflow: hidden;
+            border: 1px solid var(--color-border); /* Subtle border */
         }
 
         summary {
-            font-size: 1.2em;
-            font-weight: 700;
-            padding: 15px;
-            color: var(--color-primary);
+            padding: 14px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            outline: none;
             list-style: none;
             display: flex;
             align-items: center;
-        }
-        
-        summary::before {
-            content: '►';
-            margin-right: 10px;
-            transition: transform 0.3s ease;
-        }
-
-        details[open] summary::before {
-            transform: rotate(90deg);
-        }
-        
-        .dashboard-content {
-            padding: 0 15px 15px;
-        }
-
-        h2 {
-            margin-top: 0;
-            color: var(--color-primary);
-            font-weight: 700;
-        }
-        
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .controls label, .controls input, .controls select, .controls button {
-            font-family: var(--font-family-content);
-            font-size: 1.1em;
-        }
-        
-        .dashboard-content p {
-            font-size: 1em;
-        }
-
-        .dashboard-content p strong {
-            font-size: 1em;
+            justify-content: space-between;
+            background-color: var(--color-surface);
             color: var(--color-text-primary);
         }
+        
+        summary::-webkit-details-marker { display: none; }
+        summary::after {
+            content: '+';
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: var(--color-text-secondary);
+            transition: transform 0.2s;
+        }
+        details[open] summary::after { transform: rotate(45deg); }
+        
+        .dashboard-content {
+            padding: 16px;
+            border-top: 1px solid var(--color-border);
+            background-color: var(--color-surface);
+        }
 
-        .controls button {
+        .stat-card {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--color-border);
+        }
+        .stat-card:last-child { border-bottom: none; margin-bottom: 0; }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 220px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        input[type="text"], select, textarea {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, textarea:focus {
+            border-color: var(--color-primary);
+        }
+
+        button.primary-btn {
             background-color: var(--color-secondary);
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 10px 16px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color: 0.3s ease;
-        }
-        
-        .controls button:hover {
-            background-color: #20c25a;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 300px;
-            margin-top: 15px;
-        }
-
-        .chart-title {
-            padding: 8px 15px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        
-        .chart-title.green-bg-black-text {
-            background-color: var(--color-secondary);
-            color: black;
-        }
-
-        .chart-title.green-bg-white-text {
-            background-color: var(--color-secondary);
-            color: white;
-        }
-
-        .large-names {
-            font-size: 1.1em;
             font-weight: 500;
-            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
         }
         
-        .author-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 5px;
-            font-size: 1.2em;
+        button.primary-btn:active { opacity: 0.8; }
+        
+        button.secondary-btn {
+            background-color: transparent;
+            border: 1px solid var(--color-secondary);
+            color: var(--color-secondary);
+            padding: 9px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
 
-        .author-box {
-            width: 20px;
-            height: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            border: 1px solid #888;
+        /* --- SUBTLE Footer Action Buttons (Modified for 4 columns) --- */
+        .footer-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 Columns */
+            gap: 8px; /* Reduced gap */
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--color-border);
         }
 
-        #file-upload-section {
+        .action-card-btn {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 10px 4px; /* Slightly less padding */
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start; 
-            padding-top: 10vh; 
+            justify-content: center;
+            cursor: pointer;
             text-align: center;
-            min-height: 100%;
-            background-image: url('https://i.redd.it/qwd83nc4xxf41.jpg');
-            background-size: cover;
-            background-position: center;
-            box-sizing: border-box;
-        }
-        
-        #upload-card {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            max-width: 500px;
-        }
-
-        body.dark-mode #upload-card {
-             background-color: rgba(32, 44, 51, 0.9);
-        }
-
-        #file-upload-section h1 {
-            color: var(--color-primary);
-            font-size: 2.5em;
-        }
-        
-        #file-upload-section p {
-            font-size: 1.1em;
-            color: var(--color-text-secondary);
-            margin-bottom: 20px;
-        }
-        
-        .app-explanation {
-            background-color: rgba(255, 255, 255, 0.7);
-            border-top: 1px solid var(--color-border);
-            border-bottom: 1px solid var(--color-border);
-            padding: 15px;
-            margin: 20px 0;
-            text-align: left;
-            font-size: 0.95em;
+            transition: all 0.2s ease;
             color: var(--color-text-secondary);
         }
-        body.dark-mode .app-explanation {
-            background-color: rgba(0,0,0,0.3);
+
+        .action-card-btn:hover {
+            background-color: var(--color-surface);
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .action-card-btn svg {
+            width: 22px; /* Adjusted Icon Size */
+            height: 22px;
+            margin-bottom: 6px;
+            fill: currentColor;
+            opacity: 0.8;
         }
         
-        .dark-mode-container {
+        .action-card-btn:hover svg {
+            opacity: 1;
+            fill: var(--color-secondary);
+        }
+
+        .action-card-btn span {
+            font-size: 0.7rem; /* Smaller text for 4 columns */
+            font-weight: 500;
+            line-height: 1.1;
+        }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: var(--color-surface);
+            width: 100%;
+            max-width: 380px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            border: 1px solid var(--color-border);
+        }
+
+        .slot-item {
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 15px;
+            background: var(--color-surface);
+            text-align: left;
+            transition: background 0.2s;
+        }
+        .slot-item:active { background-color: var(--color-bg); }
+        
+        .slot-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); }
+        .slot-info p { margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); }
+        .slot-actions { display: flex; gap: 8px; }
+
+        /* --- Upload Section --- */
+        #file-upload-section {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-color: #f0f2f5;
+            background-size: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 20px;
+            text-align: center;
         }
         
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 24px;
+        body.dark-mode #file-upload-section {
+             background-color: #111b21;
+             background-blend-mode: overlay;
         }
 
-        .switch input { 
-          opacity: 0;
-          width: 0;
-          height: 0;
+        .upload-card {
+            background: var(--color-surface);
+            padding: 40px 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 360px;
+            border: 1px solid var(--color-border);
         }
-
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #ccc;
-          transition: .4s;
-        }
-
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 16px;
-          width: 16px;
-          left: 4px;
-          bottom: 4px;
-          background-color: white;
-          transition: .4s;
-        }
-
-        input:checked + .slider {
-          background-color: var(--color-primary);
-        }
-
-        input:checked + .slider:before {
-          transform: translateX(26px);
-        }
-
-        .slider.round {
-          border-radius: 34px;
-        }
-
-        .slider.round:before {
-          border-radius: 50%;
-        }
-
-
+        
         .custom-file-upload {
+            display: block;
             background-color: var(--color-secondary);
             color: white;
-            padding: 15px 30px;
+            padding: 16px;
             border-radius: 50px;
             cursor: pointer;
-            transition: background-color: 0.3s ease, transform 0.2s ease;
-            font-weight: 700;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .custom-file-upload:hover {
-            background-color: #20c25a;
-        }
-
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: var(--color-secondary);
-            animation: spin 1s ease infinite;
-            display: none;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .message-box {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--color-surface);
-            padding: 20px 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 24px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
             text-align: center;
         }
-
-        .message-box button {
-            margin-top: 15px;
-            padding: 8px 20px;
-            border: none;
-            background-color: var(--color-secondary);
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .popup-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .popup-content {
-            background-color: var(--color-surface);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-            max-width: 500px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+        .custom-file-upload:active { transform: scale(0.98); }
         
-        .popup-content h3 {
-            padding: 8px 15px;
-            border-radius: 8px;
-            background-color: var(--color-secondary);
-            color: white;
-            margin-top: 0;
-        }
+        #loading-progress-container { display: none; width: 100%; margin-top: 20px; }
+        #progress-bar { width: 100%; height: 4px; background-color: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+        #progress-fill { height: 100%; width: 0%; background-color: var(--color-secondary); transition: width 0.3s; }
 
-        .popup-content p {
-            margin: 0;
-        }
-        
-        .popup-content button {
-            background-color: var(--color-secondary);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color: 0.3s ease;
-        }
-
-        .popup-content button:hover {
-            background-color: #20c25a;
-        }
-
-        .dont-show-again-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .dont-show-again-container input[type="checkbox"] {
-            -webkit-appearance: none;
-            appearance: none;
-            background-color: var(--color-surface);
-            margin: 0;
-            font: inherit;
-            color: currentColor;
-            width: 1.15em;
-            height: 1.15em;
-            border: 0.1em solid currentColor;
-            border-radius: 0.15em;
-            transform: translateY(-0.075em);
-            cursor: pointer;
-            display: grid;
-            place-content: center;
-        }
-
-        .dont-show-again-container input[type="checkbox"]::before {
-            content: "";
-            width: 0.65em;
-            height: 0.65em;
-            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 45%);
-            transform: scale(0);
-            transform-origin: bottom left;
-            transition: transform 0.3s ease;
-            box-shadow: inset 1em 1em var(--color-secondary);
-        }
-
-        .dont-show-again-container input[type="checkbox"]:checked::before {
-            transform: scale(1);
-        }
-
-        .dont-show-again-container label {
-            font-size: 0.9em;
-            color: var(--color-text-secondary);
-            cursor: pointer;
-        }
-
-        .stats-text {
-            font-size: 1.2em;
-        }
-
-        .stats-count {
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        
-        #splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: var(--color-primary);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 3000;
-            transition: opacity 0.5s ease-out;
-        }
-        #splash-screen img {
-            width: 120px;
-            height: 120px;
-            border-radius: 24px;
-            margin-bottom: 20px;
-        }
-        #splash-screen .dont-show-again-container label {
-            color: white;
-        }
-        
-        #install-toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #e8f5e9;
-            color: #1b5e20;
-            padding: 15px 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            display: none;
-            align-items: center;
-            gap: 15px;
-            z-index: 2500;
-            max-width: 350px;
-            animation: slide-in 0.5s ease-out;
-        }
-
-        @keyframes slide-in {
-            from {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        #install-toast-content p {
-            margin: 0;
-            font-weight: 500;
-        }
-        #install-toast-content p small {
-            font-weight: 400;
-            opacity: 0.8;
-        }
-
-        .install-toast-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .install-toast-buttons button {
-            border: none;
-            border-radius: 8px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color: 0.2s ease;
-        }
-
-        .install-toast-buttons .install-btn {
-            background-color: var(--color-secondary);
-            color: white;
-        }
-        .install-toast-buttons .install-btn:hover {
-            background-color: #20c25a;
-        }
-        .install-toast-buttons .dismiss-btn {
-            background-color: transparent;
-            color: #1b5e20;
-        }
-        .install-toast-buttons .dismiss-btn:hover {
-            background-color: rgba(0,0,0,0.05);
-        }
-
-        .footer-actions {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-            width: 100%;
-        }
-
-        .action-btn {
-            background-color: transparent;
-            border: 1px solid var(--color-primary);
-            color: var(--color-primary);
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            text-decoration: none;
-        }
-
-        .action-btn:hover {
-            background-color: var(--color-primary);
-            color: white;
-        }
-        
-        .action-btn.icon-only {
-            padding: 10px;
-            border-radius: 50%;
-        }
-        .action-btn.icon-only span {
-            display: none;
-        }
-        .action-btn.icon-only svg {
-            margin-right: 0;
-        }
-
-        .action-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-        }
-        #dashboard-container .footer-actions {
-            padding: 10px 0;
-        }
-        
-        .new-chat-footer-btn {
-            display: none;
-        }
-
-        #report-modal-content .spinner {
-            margin: 20px auto;
-        }
-
-        #report-actions {
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-        }
-
-        #report-actions button {
-            width: 100%;
-        }
-        
-        #filtered-info, #manual-analysis-info {
-            margin-bottom: 15px;
-        }
-
-        .app-footer {
-            background-color: #6c757d;
-            color: white;
-            text-align: center;
-            padding: 8px 0;
-            font-size: 0.8em;
-            margin-top: auto;
-        }
-
-
+        /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
-            #main-content {
-                flex-direction: column;
-                overflow-y: auto;
+            #main-content { flex-direction: column; }
+            #dashboard-container {
+                display: none; 
+                flex: 1; width: 100%; max-width: 100%; border-left: none; z-index: 10;
+                padding-bottom: 120px; /* Safe space for bottom nav + footer buttons */
             }
-            #messages-container, #dashboard-container {
-                flex: 1 1 100%;
-                height: auto;
-                padding: 8px;
-                gap: 8px;
-            }
-            #upload-card {
-                padding: 15px;
-                margin: 0 10px;
-            }
-            #global-header {
-                position: static;
-                justify-content: center;
-                text-align: center;
-                padding: 10px 5px;
-                height: auto;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            }
+            #dashboard-container.active { display: flex; }
+            #messages-container.hidden { display: none; }
             
-            #global-header .header-buttons {
-                display: none;
-            }
-
-            #interlocutor-names {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 90vw;
-                font-size: 1.1em;
-            }
-
-            #header-info p {
-                display: none;
-            }
-            
-            #main-content {
-                margin-top: 0;
-            }
-            #install-toast {
-                left: 50%;
-                transform: translateX(-50%);
-                width: calc(100% - 40px);
-            }
-            
-            #file-upload-section {
-                justify-content: flex-start;
-                padding-top: 30px;
-                min-height: calc(100% - 60px);
-            }
-            
-            #file-upload-section .footer-actions .new-chat-footer-btn {
-                 display: none;
-            }
-
-            #file-upload-section h1 {
-                font-size: 2.1em;
-                margin-bottom: 10px;
-            }
-
-            #file-upload-section p {
-                font-size: 1em;
-            }
-            
-            .dashboard-section {
-                padding: 10px;
-                margin-bottom: 12px;
-                margin-left: 4px;
-                margin-right: 4px;
-            }
-
-            summary {
-                padding: 10px;
-            }
-            
-            .dashboard-content {
-                 padding: 0 10px 10px;
-            }
-
-            .whatsapp-message {
-                padding: 6px 8px;
-            }
-            .message-author {
-                font-size: 15px;
-            }
-            .message-text {
-                font-size: 14px;
-            }
-            .message-time {
-                font-size: 12px;
-            }
-
-            .stats-text, .stats-count, .large-names, summary {
-                font-size: 1em;
-            }
-            
-            .controls {
-                gap: 8px;
-                margin-bottom: 10px;
-            }
-            .controls label, .controls input, .controls select, .controls button {
-                font-size: 0.95em;
-            }
-            
-            #filtered-info {
-                margin-bottom: 10px;
-            }
-
-            .footer-actions {
-                justify-content: space-around;
-            }
-            
-            #dashboard-container .footer-actions {
+            #mobile-nav {
                 display: flex;
+                height: 60px;
+                background-color: var(--color-surface);
+                border-top: 1px solid var(--color-border);
+                flex-shrink: 0;
+                padding-bottom: var(--safe-area-bottom);
+                position: relative;
+                z-index: 500;
             }
+            .nav-item {
+                flex: 1; display: flex; flex-direction: column;
+                align-items: center; justify-content: center;
+                color: var(--color-text-secondary); font-size: 0.75rem; cursor: pointer;
+                transition: color 0.2s;
+            }
+            .nav-item.active { color: var(--color-secondary); font-weight: 600; }
+            .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
         }
-        
+        @media (min-width: 769px) { #mobile-nav { display: none; } }
+
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--color-surface);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 3000; transition: opacity 0.5s ease-out;
+        }
     </style>
 </head>
 <body>
-    
-    <div id="splash-screen" style="display: none;">
-        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" alt="App Logo">
-        <div class="dont-show-again-container">
-            <input type="checkbox" id="dont-show-splash-again-checkbox">
-            <label for="dont-show-splash-again-checkbox">No volver a mostrar</label>
+
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" alt="Logo" width="90" style="border-radius:18px; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--color-primary); font-weight: 300; letter-spacing: 1px;">Analizador WA</h2>
+        <div style="margin-top:24px;">
+            <input type="checkbox" id="no-splash" style="accent-color: var(--color-primary);"> 
+            <label for="no-splash" style="color:var(--color-text-secondary); font-size: 0.9rem;">No mostrar de nuevo</label>
         </div>
     </div>
 
-    <div id="app-container">
-        
-        <div id="file-upload-section">
-            <div id="upload-card">
-                <h1>Analizador de Chats de WhatsApp</h1>
-                <p>Sube tu archivo .txt o .zip para comenzar el análisis. ¡No te preocupes por el tamaño!</p>
-                <div class="app-explanation">
-                    Esta PWA analiza tus chats de WhatsApp localmente en tu navegador. <strong>Tus datos nunca salen de tu dispositivo.</strong> Instala la app para usarla sin conexión y accede a tus análisis guardados.
-                    <div class="dark-mode-container">
-                        <span>Modo Oscuro</span>
-                        <label class="switch">
-                          <input type="checkbox" id="dark-mode-toggle-initial">
-                          <span class="slider round"></span>
-                        </label>
-                    </div>
-                </div>
-                <label for="fileInput" class="custom-file-upload">
-                    Seleccionar Archivo
-                </label>
-                <input type="file" id="fileInput" accept=".txt,.zip" style="display: none;">
-                <div class="spinner" id="loading-spinner"></div>
+    <!-- Chat Manager Modal -->
+    <div id="chat-manager-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--color-primary);">Mis Conversaciones</h3>
+            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom: 15px;">
+                Espacios usados: <strong id="slots-used">0</strong> (Ilimitado)
+            </p>
+            <div id="slots-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
+                <!-- Slots injected via JS -->
             </div>
-            <div class="footer-actions">
-                <button class="action-btn icon-only" onclick="shareApp()">
-                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg>
-                    <span>Compartir</span>
-                </button>
-                <button class="action-btn icon-only" onclick="reportBug()">
-                    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"></path></svg>
-                    <span>Fallos</span>
-                </button>
+            
+            <button class="primary-btn" onclick="triggerFileUpload()" style="width:100%; margin-bottom: 10px;">
+                + Agregar Nuevo Chat
+            </button>
+            <button class="secondary-btn" style="width:100%;" onclick="closeModal('chat-manager-modal')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Bug Report Modal (Improved) -->
+    <div id="bug-report-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="background-color: rgba(255, 193, 7, 0.2); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="#ffc107"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
             </div>
-            <div class="app-footer">
-                &copy; by VivirAplicaciones &bull; Colombia &bull; 2025
+            <h3 style="margin-top:0; color:var(--color-text-primary);">Reportar un Fallo</h3>
+            <p style="font-size:0.9rem; color:var(--color-text-secondary); margin-bottom: 15px;">
+                Describe el problema que encontraste:
+            </p>
+            
+            <!-- NEW: Textarea for input -->
+            <textarea id="bug-description" rows="4" placeholder="Ej: La gráfica no carga cuando..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
+
+            <button class="primary-btn" style="width:100%; margin-bottom: 10px;" onclick="sendBugEmail()">
+                Enviar Correo
+            </button>
+            <button class="secondary-btn" style="width:100%;" onclick="closeModal('bug-report-modal')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Upload Screen -->
+    <div id="file-upload-section">
+        <div class="upload-card">
+            <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" width="60" style="border-radius:12px; margin-bottom:15px;">
+            <h1 style="margin:0 0 8px 0; color:var(--color-text-primary); font-size:1.6rem;">Analizador de Chats</h1>
+            <p style="color:var(--color-text-secondary); margin-bottom:24px; font-size:0.9rem;">
+                Sube tu archivo .txt o .zip.<br>Análisis 100% local y seguro.
+            </p>
+            
+            <button class="secondary-btn" onclick="openModal('chat-manager-modal')" style="margin-bottom: 10px; width: 100%; border: none; background: rgba(0,0,0,0.05);">
+                📂 Ver Mis Conversaciones
+            </button>
+            
+            <label for="fileInput" class="custom-file-upload">
+                Subir Archivo
+            </label>
+            <!-- Hidden input utilized by multiple buttons -->
+            <input type="file" id="fileInput" accept=".txt,.zip" style="display: none;">
+            
+            <div id="loading-progress-container">
+                <div id="progress-bar"><div id="progress-fill"></div></div>
+                <p id="progress-text" style="font-size: 0.8rem; color: var(--color-text-secondary);">Analizando...</p>
+            </div>
+            
+            <div style="margin-top: 24px;">
+                 <button class="icon-btn" onclick="toggleTheme()" title="Cambiar Tema"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
             </div>
         </div>
+    </div>
 
-        <div id="global-header" style="display:none;">
+    <!-- Main App Structure -->
+    <div id="app-container" style="display:none;">
+        <header id="global-header">
             <div id="header-info">
-                <div class="interlocutors-info">
-                    <h2 id="interlocutor-names"></h2>
-                    <p>Total de mensajes: <strong id="total-messages-header">0</strong></p>
-                </div>
+                <h2 id="interlocutor-names">Chat</h2>
+                <span id="header-stats-preview">...</span>
             </div>
             <div class="header-buttons">
-                 <button id="dark-mode-toggle" class="action-btn icon-only">
-                    <svg id="theme-icon" viewBox="0 0 24 24">
-                        <!-- Moon Icon -->
-                        <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
-                    </svg>
+                <!-- NEW: Add Conversation Button in Header -->
+                <button class="icon-btn" onclick="triggerFileUpload()" title="Agregar Chat" style="color: var(--color-secondary);">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                 </button>
-                <button id="install-pwa-btn" onclick="installPWA()" style="display: none;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                        <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.34v7h6.66V9h3.34L12 2z"/>
-                    </svg>
-                    Instalar App
+
+                <button class="icon-btn" onclick="openModal('chat-manager-modal')" title="Mis Chats">
+                    <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
                 </button>
-                <button id="new-chat-btn" onclick="openFileExplorer()">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                    </svg>
-                    Nuevo Chat
+                <button class="icon-btn" onclick="closeChat()" title="Salir">
+                     <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+                </button>
+                <button class="icon-btn" onclick="toggleTheme()" title="Tema">
+                    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
                 </button>
             </div>
-        </div>
+        </header>
 
-        <div id="main-content" style="display:none;">
-            <div id="messages-container"></div>
+        <main id="main-content">
+            <div id="messages-container" class="active">
+                <!-- Messages injected here -->
+            </div>
 
             <div id="dashboard-container">
-                
-                <details class="dashboard-section" id="general-stats-section">
-                    <summary>Estadísticas Generales</summary>
-                    <div class="dashboard-content">
-                        <p class="stats-text">Mensajes de <span id="jab-name-stats">Autor 1</span>: <strong class="stats-count" id="jab-count">0</strong></p>
-                        <p class="stats-text">Mensajes de <span id="angeles-name-stats">Autor 2</span>: <strong class="stats-count" id="angeles-count">0</strong></p>
-                    </div>
-                </details>
-
-                <details class="dashboard-section" id="message-distribution-section">
-                    <summary>Distribución de Mensajes</summary>
-                    <div class="dashboard-content">
-                         <div class="author-info">
-                            <span class="author-box" style="background-color: rgba(7, 94, 84, 0.8);"></span>
-                            <span class="large-names" id="jab-name-dist"></span>: <strong class="large-names" id="jab-count-dist">0</strong>
-                        </div>
-                        <div class="author-info">
-                            <span class="author-box" style="background-color: rgba(18, 140, 126, 0.8);"></span>
-                            <span class="large-names" id="angeles-name-dist"></span>: <strong class="large-names" id="angeles-count-dist">0</strong>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="messagesByAuthorChart"></canvas>
-                        </div>
-                    </div>
-                </details>
-
-                <details class="dashboard-section" id="search-analysis-section">
-                    <summary>Análisis de Búsqueda y Resultados</summary>
-                    <div class="dashboard-content">
-                        <div class="controls">
-                            <label for="keywordInput">Filtrar por palabra/frase:</label>
-                            <input type="text" id="keywordInput" placeholder="Ej. proyecto">
-                            <button onclick="applyFilter()">Aplicar Filtro</button>
-                            <button onclick="resetFilter()">Reiniciar Filtro</button>
-                        </div>
-                        <div id="filtered-info" style="display:none;">
-                            <p>Mensajes totales en el filtro: <strong id="filtered-total-count">0</strong></p>
-                            <p>Mensajes de <span class="large-names" id="filtered-jab-name"></span>: <strong class="large-names" id="filtered-jab-count">0</strong></p>
-                            <p>Mensajes de <span class="large-names" id="filtered-angeles-name"></span>: <strong class="large-names" id="filtered-angeles-count">0</strong></p>
-                        </div>
-                        <div id="filtered-chart-container" class="chart-container" style="display:none;">
-                             <div class="chart-title green-bg-white-text">DISTRIBUCIÓN DE MENSAJES DEL FILTRO</div>
-                             <canvas id="filteredMessagesByAuthorChart"></canvas>
-                        </div>
-                    </div>
-                </details>
-
-                <details id="manual-analysis-section">
-                    <summary>Análisis de Selección Manual</summary>
-                    <div class="dashboard-content">
-                        <div class="controls">
-                            <label for="customChartTitle">Título de la Gráfica:</label>
-                            <input type="text" id="customChartTitle" placeholder="Ej. Conversación sobre el proyecto">
-                            <button onclick="analyzeSelectedMessages()">Analizar Selección</button>
-                            <button onclick="clearSelection()">Limpiar Selección</button>
-                        </div>
-                        <div id="manual-analysis-info" style="display:none;">
-                            <p>Mensajes totales seleccionados: <strong id="selected-total-count">0</strong></p>
-                             <div class="author-info">
-                                <span class="author-box" style="background-color: #ff0000;"></span>
-                                <span class="large-names" id="selected-jab-name"></span>: <strong class="large-names" id="selected-jab-count">0</strong>
-                            </div>
-                            <div class="author-info">
-                                <span class="author-box" style="background-color: #008000;"></span>
-                                <span class="large-names" id="selected-angeles-name"></span>: <strong class="large-names" id="selected-angeles-count">0</strong>
-                            </div>
-                        </div>
-                        <div id="custom-chart-container" class="chart-container" style="display:none;">
-                            <div class="chart-title green-bg-white-text" id="custom-chart-title-text"></div>
-                            <canvas id="customMessagesByAuthorChart"></canvas>
-                        </div>
-                    </div>
-                </details>
-
-                <details class="dashboard-section" id="temporal-analysis-section">
-                    <summary>Análisis de Tendencia de Mensajes</summary>
-                    <div class="dashboard-content">
-                        <div class="controls">
-                            <label for="timeframeSelect">Agrupar por:</label>
-                            <select id="timeframeSelect" onchange="renderChartTemporal()">
-                                <option value="hour">Hora del Día</option>
-                                <option value="day">Día de la Semana</option>
-                                <option value="month">Mes</option>
-                            </select>
-                        </div>
-                         <div class="chart-container">
-                            <div class="chart-title green-bg-white-text" id="temporal-chart-title-text"></div>
-                            <canvas id="temporalMessagesChart"></canvas>
-                        </div>
-                    </div>
-                </details>
-                
-                <div class="footer-actions">
-                     <button class="action-btn" id="generate-report-btn" onclick="generateReport()">
-                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>
-                        <span>Informe PDF</span>
-                    </button>
-                    <button class="action-btn new-chat-footer-btn" onclick="resetApp()">
-                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
-                        <span>Nuevo Chat</span>
-                    </button>
-                    <button class="action-btn icon-only" onclick="shareApp()">
-                        <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg>
-                        <span>Compartir</span>
-                    </button>
-                    <button class="action-btn icon-only" onclick="reportBug()">
-                        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"></path></svg>
-                        <span>Fallos</span>
-                    </button>
-                </div>
-                 <div class="app-footer">
-                    &copy; by VivirAplicaciones &bull; Colombia &bull; 2025
-                </div>
-            </div>
-        </div>
-
-        <div id="message-box" class="message-box">
-            <span id="message-text"></span>
-            <button onclick="hideMessageBox()">OK</button>
-        </div>
-        
-        <div id="report-modal" class="popup-modal">
-            <div class="popup-content" id="report-modal-content">
-                <h3>Informe de Análisis</h3>
-                <p id="report-status">Generando tu informe en PDF...</p>
-                <div class="spinner" id="report-spinner" style="display: block;"></div>
-                <div id="report-actions">
-                    <button class="action-btn" onclick="downloadPDF()">Descargar PDF</button>
-                    <button id="new-chat-btn" onclick="openFileExplorer()">Nuevo Chat</button>
+                <div style="padding-bottom: 20px;">
+                    <h3 style="margin-top:0; color:var(--color-primary); font-size:1.2rem;">Estadísticas</h3>
                     
-                    <button class="action-btn" onclick="sharePDF()">Compartir PDF</button>
-                    <button onclick="closeReportModal()">Cerrar</button>
+                    <!-- 1. General Summary -->
+                    <details open>
+                        <summary>Resumen General</summary>
+                        <div class="dashboard-content">
+                            <div class="stat-card"><span>Total:</span> <strong id="stat-total">0</strong></div>
+                            <div class="stat-card" style="color:var(--color-primary);"><span id="label-p1">P1:</span> <strong id="stat-p1">0</strong></div>
+                            <div class="stat-card" style="color:#128c7e;"><span id="label-p2">P2:</span> <strong id="stat-p2">0</strong></div>
+                        </div>
+                    </details>
+
+                    <!-- 2. Distribution Pie -->
+                    <details>
+                        <summary>Distribución</summary>
+                        <div class="dashboard-content">
+                            <div class="chart-wrapper"><canvas id="chart-pie"></canvas></div>
+                        </div>
+                    </details>
+
+                    <!-- 3. Temporal Analysis -->
+                    <details>
+                        <summary>Tendencia de Mensajes</summary>
+                        <div class="dashboard-content">
+                            <div class="control-group">
+                                <select id="timeframe-select" onchange="updateTemporalChart()">
+                                    <option value="hour">Hora del Día</option>
+                                    <option value="day">Día de la Semana</option>
+                                    <option value="month">Mes</option>
+                                </select>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chart-temporal"></canvas></div>
+                        </div>
+                    </details>
+                    
+                    <!-- 4. Advanced Search -->
+                    <details>
+                        <summary>Búsqueda y Filtros</summary>
+                        <div class="dashboard-content">
+                            <div class="control-group">
+                                <input type="text" id="search-input" placeholder="Ej. proyecto">
+                                <button class="primary-btn" onclick="applyFilter()">Filtrar</button>
+                            </div>
+                            <button class="secondary-btn" onclick="resetFilter()" style="width:100%; margin-bottom:10px;">Reiniciar</button>
+                            
+                            <div id="search-stats" style="display:none; margin-bottom:10px; font-size:0.85rem; color:var(--color-text-secondary);">
+                                <div>Total en filtro: <strong id="filter-total">0</strong></div>
+                                <div><span id="filter-label-p1"></span>: <strong id="filter-p1">0</strong></div>
+                                <div><span id="filter-label-p2"></span>: <strong id="filter-p2">0</strong></div>
+                            </div>
+                            <div class="chart-wrapper" id="search-chart-wrapper" style="display:none;">
+                                <canvas id="chart-search"></canvas>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- 5. Manual Analysis -->
+                    <details id="manual-analysis-details">
+                        <summary>Selección Manual</summary>
+                        <div class="dashboard-content">
+                            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-top:0;">
+                                Toca los mensajes del chat para analizarlos aquí.
+                            </p>
+                            <div id="manual-stats" style="display:none;">
+                                <div class="stat-card"><span>Seleccionados:</span> <strong id="manual-total">0</strong></div>
+                                <div class="chart-wrapper"><canvas id="chart-manual"></canvas></div>
+                                <button class="secondary-btn" onclick="clearSelection()" style="width:100%; margin-top:10px;">Limpiar Selección</button>
+                            </div>
+                            <div id="manual-placeholder" style="text-align:center; padding:20px; color:var(--color-text-secondary); opacity: 0.6;">
+                                Ningún mensaje seleccionado
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- SUBTLE Footer Action Buttons -->
+                    <div class="footer-actions">
+                        <div class="action-card-btn" onclick="shareAppAction()">
+                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg>
+                            <span>Compartir<br>App</span>
+                        </div>
+                        <div class="action-card-btn" onclick="openModal('bug-report-modal')">
+                            <svg viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg>
+                            <span>Reportar<br>Fallo</span>
+                        </div>
+                        <div class="action-card-btn" onclick="shareReport()">
+                            <svg viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
+                            <span>Compartir<br>Informe</span>
+                        </div>
+                        <div class="action-card-btn" onclick="downloadReport()">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            <span>Descargar<br>PDF</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-        </div>
+        </main>
 
-        <div id="manual-analysis-popup" class="popup-modal">
-            <div class="popup-content">
-                <h3>ANÁLISIS DE SELECCIÓN MANUAL</h3>
-                <p>Para analizar un fragmento específico del chat, haz clic en los mensajes a la izquierda.</p>
-                <p>Cada mensaje que selecciones se marcará con un borde, y sus datos se incluirán en este análisis. Puedes seleccionar mensajes de ambos interlocutores para comparar su conversación sobre un tema en particular.</p>
-                <div class="dont-show-again-container">
-                    <input type="checkbox" id="dont-show-again-checkbox">
-                    <label for="dont-show-again-checkbox">No volver a mostrar</label>
-                </div>
-                <button onclick="hideManualAnalysisPopup()">Entendido</button>
+        <nav id="mobile-nav">
+            <div class="nav-item active" onclick="switchMobileTab('chat')">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+                <span>Chat</span>
             </div>
-        </div>
-        
-        <div id="install-toast">
-            <div id="install-toast-content">
-                <p>¡Instala la App!<br><small>Accede rápido y sin conexión.</small></p>
+            <div class="nav-item" onclick="switchMobileTab('stats')">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                <span>Datos</span>
             </div>
-            <div class="install-toast-buttons">
-                <button class="dismiss-btn" onclick="dismissInstallToast()">No, gracias</button>
-                <button class="install-btn" onclick="installPWA()">Instalar</button>
-            </div>
-        </div>
-
-
+        </nav>
     </div>
 
     <script>
-        // --- Global Variables & Initial Setup ---
-        let db, generatedPDF;
-        let allMessages = [], filteredMessages = [], selectedMessages = new Set();
-        let myChart1, myChart2, myChart3, myChart4;
-        let senderNames = [];
+        // --- Core State ---
+        let currentMessages = [];
+        let filteredMessages = [];
+        let selectedIndices = new Set();
+        let participants = [];
+        let currentSlotId = null;
+        let charts = { pie: null, temporal: null, search: null, manual: null };
+        const DB_NAME = 'WAAnalyzerV3';
+        // MAX_SLOTS removed as requested (unlimited)
 
-        const DB_NAME = 'chatAnalyzerDB';
-        const STORE_NAME = 'chats';
-        
-        // --- DOM Elements ---
+        // --- UI References ---
+        const ui = {
+            uploadSection: document.getElementById('file-upload-section'),
+            appContainer: document.getElementById('app-container'),
+            progressBar: document.getElementById('progress-fill'),
+            progressText: document.getElementById('progress-text'),
+            loadingContainer: document.getElementById('loading-progress-container'),
+            msgContainer: document.getElementById('messages-container'),
+            stats: {
+                total: document.getElementById('stat-total'),
+                p1: document.getElementById('stat-p1'),
+                p2: document.getElementById('stat-p2'),
+                l1: document.getElementById('label-p1'),
+                l2: document.getElementById('label-p2')
+            },
+            slotsContainer: document.getElementById('slots-container'),
+            slotsUsed: document.getElementById('slots-used')
+        };
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            handleSplashScreen();
+            updateSlotsUI();
+        });
+
         const fileInput = document.getElementById('fileInput');
-        const fileUploadSection = document.getElementById('file-upload-section');
-        const mainContent = document.getElementById('main-content');
-        const messagesContainer = document.getElementById('messages-container');
-        const dashboardContainer = document.getElementById('dashboard-container');
-        const spinner = document.getElementById('loading-spinner');
-        const keywordInput = document.getElementById('keywordInput');
-        const searchAnalysisSection = document.getElementById('search-analysis-section');
-        const manualAnalysisSection = document.getElementById('manual-analysis-section');
-        const customChartContainer = document.getElementById('custom-chart-container');
-        const customChartTitleInput = document.getElementById('customChartTitle');
-        const customChartTitleText = document.getElementById('custom-chart-title-text');
-        const temporalChartTitleText = document.getElementById('temporal-chart-title-text');
-        const detailsElements = document.querySelectorAll('details');
-        const filteredInfo = document.getElementById('filtered-info');
-        const manualAnalysisInfo = document.getElementById('manual-analysis-info');
-        const dontShowAgainCheckbox = document.getElementById('dont-show-again-checkbox');
-        const globalHeader = document.getElementById('global-header');
-        const interlocutorNamesEl = document.getElementById('interlocutor-names');
-        const totalMessagesHeaderEl = document.getElementById('total-messages-header');
-        const jabNameStatsEl = document.getElementById('jab-name-stats');
-        const angelesNameStatsEl = document.getElementById('angeles-name-stats');
-        const jabNameDistEl = document.getElementById('jab-name-dist');
-        const angelesNameDistEl = document.getElementById('angeles-name-dist');
-        const jabCountDistEl = document.getElementById('jab-count-dist');
-        const angelesCountDistEl = document.getElementById('angeles-count-dist');
+        fileInput.addEventListener('change', handleFileUpload);
 
-        
-        // --- Dark Mode ---
-        const darkModeToggle = document.getElementById('dark-mode-toggle');
-        const darkModeToggleInitial = document.getElementById('dark-mode-toggle-initial');
-        const themeIcon = document.getElementById('theme-icon');
-        const sunIcon = `<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.64 5.64c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L5.64 5.64zm12.73 12.73c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.06-1.06zM18.36 5.64l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0zM4.58 18.36l1.06-1.06c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41s1.03.39 1.41 0z"/>`;
-        const moonIcon = `<path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>`;
-        
-        function applyTheme(theme) {
-            if (theme === 'dark') {
-                document.body.classList.add('dark-mode');
-                themeIcon.innerHTML = sunIcon;
-                darkModeToggleInitial.checked = true;
-                Chart.defaults.color = '#e9edef';
-                Chart.defaults.borderColor = '#374248';
-            } else {
-                document.body.classList.remove('dark-mode');
-                themeIcon.innerHTML = moonIcon;
-                darkModeToggleInitial.checked = false;
-                Chart.defaults.color = '#111b21';
-                Chart.defaults.borderColor = '#ddd';
-            }
-            if (typeof myChart1 !== 'undefined' && myChart1) {
-                const originalSenderNames = Array.from(new Set(allMessages.map(m => m.author))).sort();
-                updateDashboard(senderNames[0], senderNames[1], originalSenderNames);
-            }
-        }
-        
-        function toggleTheme() {
-            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
+        // --- File Processing ---
+        function triggerFileUpload() {
+             // Close modal if open to show file picker
+             closeModal('chat-manager-modal');
+             fileInput.click();
         }
 
-        darkModeToggle.addEventListener('click', toggleTheme);
-        darkModeToggleInitial.addEventListener('change', toggleTheme);
-        
-        // Apply saved theme on initial load
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        applyTheme(savedTheme);
-
-
-        // --- IndexedDB & PWA Logic ---
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = event => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                    }
-                };
-                request.onsuccess = event => {
-                    db = event.target.result;
-                    resolve(db);
-                };
-                request.onerror = event => {
-                    console.error('Database error:', event.target.error);
-                    reject(event.target.error);
-                };
-            });
-        }
-
-        function saveChatToDB(messages) {
-            return new Promise((resolve, reject) => {
-                if (!db) return reject('Database not open');
-                const transaction = db.transaction([STORE_NAME], 'readwrite');
-                const store = transaction.objectStore(STORE_NAME);
-                const request = store.put({ id: 1, messages: messages });
-                request.onsuccess = () => resolve();
-                request.onerror = event => reject(event.target.error);
-            });
-        }
-
-        function getChatFromDB() {
-            return new Promise((resolve, reject) => {
-                if (!db) return reject('Database not open');
-                const transaction = db.transaction([STORE_NAME], 'readonly');
-                const store = transaction.objectStore(STORE_NAME);
-                const request = store.get(1);
-                request.onsuccess = event => {
-                    resolve(event.target.result ? event.target.result.messages : null);
-                };
-                request.onerror = event => reject(event.target.error);
-            });
-        }
-
-        function clearChatFromDB() {
-            return new Promise((resolve, reject) => {
-                if (!db) return reject('Database not open');
-                const transaction = db.transaction([STORE_NAME], 'readwrite');
-                const store = transaction.objectStore(STORE_NAME);
-                const request = store.clear();
-                request.onsuccess = () => resolve();
-                request.onerror = event => reject(event.target.error);
-            });
-        }
-
-        let deferredInstallPrompt;
-        const installToast = document.getElementById('install-toast');
-        const installButton = document.getElementById('install-pwa-btn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredInstallPrompt = e;
-            installToast.style.display = 'flex';
-            installButton.style.display = 'flex';
-        });
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(registration => console.log('Service Worker registrado:', registration.scope))
-                    .catch(error => console.log('Error al registrar Service Worker:', error));
-            });
-        }
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            const splashScreen = document.getElementById('splash-screen');
-            const dontShowSplashCheckbox = document.getElementById('dont-show-splash-again-checkbox');
-
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-            const hideSplash = localStorage.getItem('hideSplashScreen');
-
-            if (isStandalone && !hideSplash) {
-                splashScreen.style.display = 'flex';
-                setTimeout(() => {
-                    splashScreen.style.opacity = '0';
-                    setTimeout(() => { splashScreen.style.display = 'none'; }, 500);
-                }, 1500);
-            }
-
-            dontShowSplashCheckbox.addEventListener('change', () => {
-                localStorage.setItem('hideSplashScreen', dontShowSplashCheckbox.checked ? 'true' : '');
-            });
-
-            document.getElementById('manual-analysis-section').addEventListener('toggle', (event) => {
-                if (event.currentTarget.open) {
-                    showManualAnalysisPopup();
-                }
-            });
-
-            try {
-                await openDB();
-                const savedChat = await getChatFromDB();
-                if (savedChat && savedChat.length > 0) {
-                    await processChatData(savedChat, false);
-                }
-            } catch (error) {
-                console.error("Error al cargar chat desde DB:", error);
-            }
-        });
-
-        async function installPWA() {
-            if (!deferredInstallPrompt) return;
-            deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            dismissInstallToast();
-            installButton.style.display = 'none';
-        }
-
-        function dismissInstallToast() {
-            installToast.style.display = 'none';
-        }
-        
-        // --- Main App Logic ---
-
-        function shareApp() {
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Analizador de Chats de WhatsApp',
-                    text: 'Sube tu archivo de chat exportado (.txt) para comenzar el análisis. ¡No te preocupes por el tamaño!',
-                    url: window.location.href
-                }).catch((error) => {
-                    console.error('Error al compartir:', error);
-                    showMessageBox('No se pudo compartir. Es posible que tu navegador no lo permita en este contexto.');
-                });
-            } else {
-                showMessageBox('La función de compartir no está disponible en este navegador.');
-            }
-        }
-
-        function reportBug() {
-            window.location.href = `mailto:vivirapp2021@gmail.com?subject=${encodeURIComponent('Encontré un fallo')}`;
-        }
-
-        fileInput.addEventListener('change', handleFileSelect);
-        messagesContainer.addEventListener('click', toggleMessageSelection);
-
-        function showMessageBox(message) {
-            const msgBox = document.getElementById('message-box');
-            const msgText = document.getElementById('message-text');
-            msgText.innerText = message;
-            msgBox.style.display = 'flex';
-        }
-
-        function hideMessageBox() {
-            document.getElementById('message-box').style.display = 'none';
-        }
-
-        function showManualAnalysisPopup() {
-            const shouldShowPopup = !localStorage.getItem('hideManualAnalysisPopup');
-            if (shouldShowPopup) {
-                document.getElementById('manual-analysis-popup').style.display = 'flex';
-            }
-        }
-
-        function hideManualAnalysisPopup() {
-            if (dontShowAgainCheckbox.checked) {
-                localStorage.setItem('hideManualAnalysisPopup', 'true');
-            }
-            document.getElementById('manual-analysis-popup').style.display = 'none';
-        }
-
-        function openFileExplorer() {
-            fileInput.click();
-        }
-        
-        async function handleFileSelect(event) {
-            const file = event.target.files[0];
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
             if (!file) return;
 
-            spinner.style.display = 'block';
-            
+            // Unlimited slots check removed here.
+
+            ui.loadingContainer.style.display = 'block';
             try {
-                let text;
+                let text = "";
                 if (file.name.endsWith('.zip')) {
+                    ui.progressText.innerText = "Descomprimiendo...";
                     const zip = await JSZip.loadAsync(file);
-                    let txtFile = null;
-                    for (const filename in zip.files) {
-                        if (filename.endsWith('.txt') && !zip.files[filename].dir) {
-                            txtFile = zip.files[filename];
-                            break;
-                        }
-                    }
-                    if (txtFile) {
-                        text = await txtFile.async('string');
-                    } else {
-                        throw new Error('No se encontró un archivo .txt dentro del .zip.');
-                    }
-                } else if (file.name.endsWith('.txt')) {
-                    text = await file.text();
+                    const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
+                    if (!txtFile) throw new Error("No hay .txt en el ZIP");
+                    text = await txtFile.async('string');
                 } else {
-                    throw new Error('Formato de archivo no soportado. Sube un .txt o .zip.');
+                    text = await file.text();
                 }
-
-                // Usar el Web Worker para el parseo
-                const worker = new Worker('parser.worker.js');
-                worker.postMessage(text);
-
-                worker.onmessage = async (e) => {
-                    const messagesFromWorker = e.data;
-                    worker.terminate();
-
-                    if (!messagesFromWorker || messagesFromWorker.length === 0) {
-                        throw new Error('No se encontraron mensajes válidos en el archivo.');
-                    }
-                    
-                    const messages = messagesFromWorker.map(m => ({...m, timestamp: new Date(m.timestamp)}));
-                    await processChatData(messages, true);
-                    spinner.style.display = 'none';
-                };
-
-                worker.onerror = (e) => {
-                    worker.terminate();
-                    throw new Error('Error al procesar el archivo en segundo plano.');
-                };
-
-            } catch (error) {
-                console.error("Error al procesar archivo:", error);
-                showMessageBox('Hubo un error al procesar el archivo. ' + error.message);
-                spinner.style.display = 'none';
+                await parseMessagesAsync(text, file.name);
+            } catch (err) {
+                alert("Error: " + err.message);
+                ui.loadingContainer.style.display = 'none';
             } finally {
-                event.target.value = ''; 
+                e.target.value = ''; // Reset input
             }
+        }
+
+        async function parseMessagesAsync(text, filename) {
+            const lines = text.split('\n');
+            const totalLines = lines.length;
+            const parsed = [];
+            const regex = /^(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}),\s*(\d{1,2}:\d{2})\s*([ap]\.\s*m\.\s*)?\s*-\s*([^:]+):\s*(.*)/i;
+            let currentMsg = null;
+            
+            for (let i = 0; i < totalLines; i++) {
+                if (i % 2000 === 0) {
+                    ui.progressBar.style.width = `${Math.round((i/totalLines)*100)}%`;
+                    await new Promise(r => setTimeout(r, 0));
+                }
+                const match = lines[i].match(regex);
+                if (match) {
+                    if (currentMsg) parsed.push(currentMsg);
+                    const [_, date, time, ampm, author, content] = match;
+                    const [d, m, y] = date.replace(/[\.-]/g, '/').split('/');
+                    const fullYear = y.length === 2 ? `20${y}` : y;
+                    let [hr, min] = time.split(':').map(Number);
+                    if(ampm) {
+                        if(ampm.toLowerCase().includes('p') && hr < 12) hr += 12;
+                        if(ampm.toLowerCase().includes('a') && hr === 12) hr = 0;
+                    }
+
+                    currentMsg = {
+                        id: parsed.length,
+                        dateStr: date,
+                        timeStr: time + (ampm || ''),
+                        timestamp: new Date(fullYear, m-1, d, hr, min),
+                        author: author.trim(),
+                        content: content.trim()
+                    };
+                } else if (currentMsg) {
+                    currentMsg.content += '\n' + lines[i];
+                }
+            }
+            if (currentMsg) parsed.push(currentMsg);
+
+            if(parsed.length === 0) throw new Error("Formato inválido");
+            
+            const authors = {};
+            parsed.forEach(m => authors[m.author] = (authors[m.author] || 0) + 1);
+            const sortedAuthors = Object.keys(authors).sort((a,b) => authors[b] - authors[a]);
+            
+            const slotId = Date.now().toString();
+            const chatData = {
+                id: slotId,
+                name: sortedAuthors.slice(0,2).join(' & '),
+                date: new Date().toLocaleDateString(),
+                msgs: parsed,
+                participants: sortedAuthors
+            };
+            
+            await saveSlot(chatData);
+            loadChat(chatData);
+        }
+
+        // --- App Logic ---
+        function loadChat(chatData) {
+            currentSlotId = chatData.id;
+            currentMessages = chatData.msgs; 
+            if(typeof currentMessages[0].timestamp === 'string') {
+                currentMessages.forEach(m => m.timestamp = new Date(m.timestamp));
+            }
+
+            participants = chatData.participants;
+            filteredMessages = [...currentMessages];
+            selectedIndices.clear();
+
+            ui.uploadSection.style.display = 'none';
+            ui.appContainer.style.display = 'flex';
+            ui.loadingContainer.style.display = 'none';
+            closeModal('chat-manager-modal');
+
+            updateHeader();
+            renderMessages();
+            updateDashboard();
         }
         
-        async function processChatData(messages, saveToDB = true) {
-            if (!messages || messages.length === 0) {
-                showMessageBox('No se encontraron mensajes válidos. Asegúrate de que el formato del archivo sea correcto.');
-                return;
-            }
-            allMessages = messages;
-            
-            if (saveToDB) {
-                try {
-                    await saveChatToDB(allMessages);
-                } catch (error) {
-                    console.error('No se pudo guardar el chat en DB:', error);
-                }
-            }
-
-            const uniqueAuthors = new Set(allMessages.map(m => m.author));
-            const originalSenderNames = Array.from(uniqueAuthors).sort();
-             senderNames = originalSenderNames.map(name => {
-                return name.length > 10 ? name.substring(0, 10) + '...' : name;
-            });
-            
-            const SENDER_JAB = senderNames[0] || 'Autor 1';
-            const SENDER_ANGELES = senderNames[1] || 'Autor 2';
-
-            filteredMessages = [...allMessages];
-            
-            fileUploadSection.style.display = 'none';
-            globalHeader.style.display = 'flex';
-            mainContent.style.display = 'flex';
-
-            renderMessages(allMessages, originalSenderNames[0], originalSenderNames[1]);
-            updateDashboard(SENDER_JAB, SENDER_ANGELES, originalSenderNames);
-            
-            document.getElementById('general-stats-section').open = true;
+        function closeChat() {
+            currentMessages = [];
+            currentSlotId = null;
+            ui.appContainer.style.display = 'none';
+            ui.uploadSection.style.display = 'flex';
+            updateSlotsUI();
         }
 
-        function renderMessages(messages, SENDER_JAB, SENDER_ANGELES) {
-            messagesContainer.innerHTML = '';
-            messages.forEach((msg) => {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('whatsapp-message');
-                const originalIndex = allMessages.findIndex(m => m.timestamp.getTime() === msg.timestamp.getTime() && m.text === msg.text);
-                messageDiv.dataset.index = originalIndex;
+        function updateHeader() {
+            const p1 = participants[0] || "?";
+            const p2 = participants[1] || "?";
+            const displayText = participants.length > 2 ? `${p1}, ${p2}...` : `${p1} y ${p2}`;
+            document.getElementById('interlocutor-names').innerText = displayText;
+            document.getElementById('header-stats-preview').innerText = `${currentMessages.length} mensajes`;
+        }
 
-                if (selectedMessages.has(originalIndex)) {
-                     messageDiv.classList.add('selected');
-                }
+        function renderMessages(msgs = currentMessages) {
+            ui.msgContainer.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            // Optimization for large chats
+            const renderSet = msgs.length > 3000 ? msgs.slice(-3000) : msgs;
 
-                if (msg.author === SENDER_JAB) {
-                    messageDiv.classList.add('sender');
-                } else if (msg.author === SENDER_ANGELES) {
-                    messageDiv.classList.add('recipient');
-                }
+            if(msgs.length > 3000) {
+                 const warning = document.createElement('div');
+                 warning.innerHTML = "<small style='display:block;text-align:center;padding:10px;color:#888'>Mostrando los últimos 3000 mensajes</small>";
+                 fragment.appendChild(warning);
+            }
 
-                messageDiv.innerHTML = `
-                    <div class="message-author">${msg.author}</div>
-                    <div class="message-text">${msg.text.replace(/\n/g, '<br>')}</div>
-                    <div class="message-time">${msg.date}, ${msg.time}</div>
+            renderSet.forEach(msg => {
+                const isSender = msg.author === participants[0];
+                const div = document.createElement('div');
+                div.className = `whatsapp-message ${isSender ? 'sender' : 'recipient'}`;
+                if(selectedIndices.has(msg.id)) div.classList.add('selected');
+                
+                div.onclick = () => toggleSelection(msg.id, div);
+                
+                div.innerHTML = `
+                    <div class="msg-author">${msg.author}</div>
+                    ${msg.content.replace(/\n/g, '<br>')}
+                    <div class="msg-meta"><span>${msg.dateStr} ${msg.timeStr}</span></div>
                 `;
-                messagesContainer.appendChild(messageDiv);
+                fragment.appendChild(div);
             });
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            ui.msgContainer.appendChild(fragment);
+            ui.msgContainer.scrollTop = ui.msgContainer.scrollHeight;
         }
 
-        function updateDashboard(SENDER_JAB, SENDER_ANGELES, originalNames) {
-            const jabCount = allMessages.filter(m => m.author === originalNames[0]).length;
-            const angelesCount = allMessages.filter(m => m.author === originalNames[1]).length;
+        // --- Features ---
 
-            interlocutorNamesEl.innerText = `${SENDER_JAB} y ${SENDER_ANGELES}`;
-            totalMessagesHeaderEl.innerText = allMessages.length;
-            jabNameStatsEl.innerText = SENDER_JAB;
-            angelesNameStatsEl.innerText = SENDER_ANGELES;
-            jabNameDistEl.innerText = SENDER_JAB;
-            angelesNameDistEl.innerText = SENDER_ANGELES;
-
-            document.getElementById('jab-count').innerText = jabCount;
-            document.getElementById('angeles-count').innerText = angelesCount;
-            document.getElementById('jab-count-dist').innerText = jabCount;
-            document.getElementById('angeles-count-dist').innerText = angelesCount;
-            
-            renderChartMessagesByAuthor(jabCount, angelesCount);
-            renderChartTemporal();
-            renderFilteredChart();
-        }
-
-        function applyFilter() {
-            const keyword = keywordInput.value.toLowerCase().trim();
-            if (keyword) {
-                filteredMessages = allMessages.filter(msg => msg.text.toLowerCase().includes(keyword));
-                filteredInfo.style.display = 'block';
-                document.getElementById('filtered-chart-container').style.display = 'block';
+        function toggleSelection(id, divElement) {
+            if (selectedIndices.has(id)) {
+                selectedIndices.delete(id);
+                divElement.classList.remove('selected');
             } else {
-                filteredMessages = [...allMessages];
-                filteredInfo.style.display = 'none';
-                document.getElementById('filtered-chart-container').style.display = 'none';
+                selectedIndices.add(id);
+                divElement.classList.add('selected');
             }
-            const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-            renderMessages(filteredMessages, originalSenderNames[0], originalSenderNames[1]);
-            updateDashboard(senderNames[0], senderNames[1], originalSenderNames);
-            searchAnalysisSection.open = true;
-        }
-
-        function resetFilter() {
-            keywordInput.value = '';
-            filteredMessages = [...allMessages];
-            filteredInfo.style.display = 'none';
-            document.getElementById('filtered-chart-container').style.display = 'none';
-             const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-            renderMessages(filteredMessages, originalSenderNames[0], originalSenderNames[1]);
-            updateDashboard(senderNames[0], senderNames[1], originalSenderNames);
-        }
-        
-        async function resetApp() {
-            await clearChatFromDB();
-            allMessages = [];
-            filteredMessages = [];
-            selectedMessages.clear();
-            if(myChart1) myChart1.destroy();
-            if(myChart2) myChart2.destroy();
-            if(myChart3) myChart3.destroy();
-            if(myChart4) myChart4.destroy();
-            fileInput.value = '';
-            messagesContainer.innerHTML = '';
-            mainContent.style.display = 'none';
-            globalHeader.style.display = 'none';
-            fileUploadSection.style.display = 'flex';
-            filteredInfo.style.display = 'none';
-            manualAnalysisInfo.style.display = 'none';
-            document.getElementById('filtered-chart-container').style.display = 'none';
-            customChartContainer.style.display = 'none';
-            customChartTitleInput.value = '';
-        }
-
-        function toggleMessageSelection(event) {
-            const messageDiv = event.target.closest('.whatsapp-message');
-            if (!messageDiv) return;
-
-            const index = parseInt(messageDiv.dataset.index);
-            if (selectedMessages.has(index)) {
-                selectedMessages.delete(index);
-                messageDiv.classList.remove('selected');
-            } else {
-                selectedMessages.add(index);
-                messageDiv.classList.add('selected');
-            }
-            if(selectedMessages.size > 0) {
-                 manualAnalysisSection.open = true;
-                 manualAnalysisInfo.style.display = 'block';
-            } else {
-                 manualAnalysisInfo.style.display = 'none';
-                 customChartContainer.style.display = 'none';
-            }
+            updateManualStats();
+            if(selectedIndices.size > 0) document.getElementById('manual-analysis-details').open = true;
         }
         
         function clearSelection() {
-            selectedMessages.clear();
-            const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-            renderMessages(filteredMessages, originalSenderNames[0], originalSenderNames[1]);
-            manualAnalysisInfo.style.display = 'none';
-            customChartContainer.style.display = 'none';
-            customChartTitleInput.value = '';
+            selectedIndices.clear();
+            document.querySelectorAll('.whatsapp-message.selected').forEach(el => el.classList.remove('selected'));
+            updateManualStats();
         }
 
-        function analyzeSelectedMessages() {
-            if (selectedMessages.size === 0) {
-                showMessageBox('Por favor, selecciona al menos un mensaje.');
+        function updateManualStats() {
+            const manualContainer = document.getElementById('manual-stats');
+            const placeholder = document.getElementById('manual-placeholder');
+            
+            if (selectedIndices.size === 0) {
+                manualContainer.style.display = 'none';
+                placeholder.style.display = 'block';
                 return;
             }
-
-            const messagesToAnalyze = Array.from(selectedMessages).map(index => allMessages[index]);
-             const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-
-            const jabCount = messagesToAnalyze.filter(m => m.author === originalSenderNames[0]).length;
-            const angelesCount = messagesToAnalyze.filter(m => m.author === originalSenderNames[1]).length;
-            let customTitle = customChartTitleInput.value.trim().toUpperCase() || 'GRÁFICA DE SELECCIÓN PERSONALIZADA';
             
-            document.getElementById('selected-total-count').innerText = messagesToAnalyze.length;
-            document.getElementById('selected-jab-name').innerText = senderNames[0];
-            document.getElementById('selected-jab-count').innerText = jabCount;
-            document.getElementById('selected-angeles-name').innerText = senderNames[1];
-            document.getElementById('selected-angeles-count').innerText = angelesCount;
+            manualContainer.style.display = 'block';
+            placeholder.style.display = 'none';
+            document.getElementById('manual-total').innerText = selectedIndices.size;
+            
+            const subset = currentMessages.filter(m => selectedIndices.has(m.id));
+            const p1 = participants[0];
+            const p2 = participants[1];
+            const c1 = subset.filter(m => m.author === p1).length;
+            const c2 = subset.filter(m => m.author === p2).length;
 
-            customChartContainer.style.display = 'block';
-            customChartTitleText.innerText = customTitle;
-            const ctx = document.getElementById('customMessagesByAuthorChart').getContext('2d');
-            if(myChart4) myChart4.destroy();
-            myChart4 = new Chart(ctx, {
+            if (charts.manual) charts.manual.destroy();
+            charts.manual = new Chart(document.getElementById('chart-manual'), {
                 type: 'pie',
                 data: {
-                    labels: [senderNames[0], senderNames[1]],
+                    labels: [p1, p2],
                     datasets: [{
-                        data: [jabCount, angelesCount],
-                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
-                        borderColor: '#fff',
-                        borderWidth: 2
+                        data: [c1, c2],
+                        backgroundColor: ['#075e54', '#128c7e']
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'top' }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
-        
-        function renderFilteredChart() {
-             const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-            const jabCount = filteredMessages.filter(m => m.author === originalSenderNames[0]).length;
-            const angelesCount = filteredMessages.filter(m => m.author === originalSenderNames[1]).length;
 
-            if (jabCount === 0 && angelesCount === 0) {
-                filteredInfo.style.display = 'none';
-                document.getElementById('filtered-chart-container').style.display = 'none';
-                return;
-            }
+        function applyFilter() {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            if(!term) return;
 
-            document.getElementById('filtered-total-count').innerText = filteredMessages.length;
-            document.getElementById('filtered-jab-name').innerText = senderNames[0];
-            document.getElementById('filtered-jab-count').innerText = jabCount;
-            document.getElementById('filtered-angeles-name').innerText = senderNames[1];
-            document.getElementById('filtered-angeles-count').innerText = angelesCount;
-
-            filteredInfo.style.display = 'block';
-            document.getElementById('filtered-chart-container').style.display = 'block';
+            filteredMessages = currentMessages.filter(m => m.content.toLowerCase().includes(term));
             
-            const ctx = document.getElementById('filteredMessagesByAuthorChart').getContext('2d');
-            if (myChart3) myChart3.destroy();
-            myChart3 = new Chart(ctx, {
+            document.getElementById('search-stats').style.display = 'block';
+            document.getElementById('search-chart-wrapper').style.display = 'block';
+            document.getElementById('filter-total').innerText = filteredMessages.length;
+            
+            const p1 = participants[0];
+            const p2 = participants[1];
+            const c1 = filteredMessages.filter(m => m.author === p1).length;
+            const c2 = filteredMessages.filter(m => m.author === p2).length;
+            
+            document.getElementById('filter-label-p1').innerText = p1;
+            document.getElementById('filter-p1').innerText = c1;
+            document.getElementById('filter-label-p2').innerText = p2;
+            document.getElementById('filter-p2').innerText = c2;
+
+            if(charts.search) charts.search.destroy();
+            charts.search = new Chart(document.getElementById('chart-search'), {
                 type: 'bar',
                 data: {
-                    labels: [senderNames[0], senderNames[1]],
+                    labels: [p1, p2],
                     datasets: [{
-                        label: 'NÚMERO DE MENSAJES',
-                        data: [jabCount, angelesCount],
-                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
-                        borderColor: ['rgba(7, 94, 84, 1)', 'rgba(18, 140, 126, 1)'],
-                        borderWidth: 1
+                        label: 'Resultados',
+                        data: [c1, c2],
+                        backgroundColor: ['#075e54', '#128c7e']
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
+            renderMessages(filteredMessages);
         }
 
-        function renderChartMessagesByAuthor(jabCount, angelesCount) {
-            const ctx = document.getElementById('messagesByAuthorChart').getContext('2d');
-            if (myChart1) myChart1.destroy();
-            myChart1 = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: [senderNames[0], senderNames[1]],
-                    datasets: [{
-                        label: 'NÚMERO DE MENSAJES',
-                        data: [jabCount, angelesCount],
-                        backgroundColor: ['rgba(7, 94, 84, 0.8)', 'rgba(18, 140, 126, 0.8)'],
-                        borderColor: ['rgba(7, 94, 84, 1)', 'rgba(18, 140, 126, 1)'],
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true }
-            });
+        function resetFilter() {
+            document.getElementById('search-input').value = '';
+            filteredMessages = [...currentMessages];
+            document.getElementById('search-stats').style.display = 'none';
+            document.getElementById('search-chart-wrapper').style.display = 'none';
+            renderMessages(currentMessages);
         }
-        
-        function renderChartTemporal() {
-            const timeframe = document.getElementById('timeframeSelect').value;
-            const ctx = document.getElementById('temporalMessagesChart').getContext('2d');
-            if (myChart2) myChart2.destroy();
 
-            let labels, data, title;
-            const counts = {};
-
-            if (timeframe === 'hour') {
-                labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-                data = Array(24).fill(0);
-                filteredMessages.forEach(msg => { data[msg.timestamp.getHours()]++; });
-                title = 'Tendencia de Mensajes por Hora';
-            } else if (timeframe === 'day') {
-                labels = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                data = Array(7).fill(0);
-                filteredMessages.forEach(msg => { data[msg.timestamp.getDay()]++; });
-                title = 'Tendencia de Mensajes por Día';
-            } else if (timeframe === 'month') {
-                const monthlyData = {};
-                filteredMessages.forEach(msg => {
-                    const key = `${msg.timestamp.getMonth() + 1}/${msg.timestamp.getFullYear()}`;
-                    monthlyData[key] = (monthlyData[key] || 0) + 1;
-                });
-                const sortedKeys = Object.keys(monthlyData).sort((a,b) => {
-                    const [m1, y1] = a.split('/');
-                    const [m2, y2] = b.split('/');
-                    return new Date(y1, m1-1) - new Date(y2, m2-1);
-                });
-                labels = sortedKeys;
-                data = sortedKeys.map(key => monthlyData[key]);
-                title = 'Tendencia de Mensajes por Mes';
-            }
+        function updateTemporalChart() {
+            const type = document.getElementById('timeframe-select').value;
+            const ctx = document.getElementById('chart-temporal');
             
-            temporalChartTitleText.innerText = title.toUpperCase();
-            myChart2 = new Chart(ctx, {
+            let labels = [], data = [];
+            
+            if (type === 'hour') {
+                labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+                const hours = new Array(24).fill(0);
+                currentMessages.forEach(m => hours[m.timestamp.getHours()]++);
+                data = hours;
+            } else if (type === 'day') {
+                labels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                const days = new Array(7).fill(0);
+                currentMessages.forEach(m => days[m.timestamp.getDay()]++);
+                data = days;
+            } else if (type === 'month') {
+                const groups = {};
+                currentMessages.forEach(m => {
+                    const k = `${m.timestamp.getMonth()+1}/${m.timestamp.getFullYear().toString().slice(2)}`;
+                    groups[k] = (groups[k] || 0) + 1;
+                });
+                labels = Object.keys(groups);
+                data = Object.values(groups);
+            }
+
+            if(charts.temporal) charts.temporal.destroy();
+            charts.temporal = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Número de Mensajes',
+                        label: 'Actividad',
                         data: data,
-                        borderColor: 'rgba(37, 211, 102, 1)',
+                        borderColor: '#25d366',
                         backgroundColor: 'rgba(37, 211, 102, 0.2)',
                         fill: true,
-                        tension: 0.4,
+                        tension: 0.3
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function updateDashboard() {
+            const p1 = participants[0];
+            const p2 = participants[1];
+            const c1 = currentMessages.filter(m => m.author === p1).length;
+            const c2 = currentMessages.filter(m => m.author === p2).length;
+            
+            ui.stats.total.innerText = currentMessages.length;
+            ui.stats.l1.innerText = p1;
+            ui.stats.p1.innerText = c1;
+            ui.stats.l2.innerText = p2;
+            ui.stats.p2.innerText = c2;
+
+            if(charts.pie) charts.pie.destroy();
+            charts.pie = new Chart(document.getElementById('chart-pie'), {
+                type: 'doughnut',
+                data: {
+                    labels: [p1, p2],
+                    datasets: [{
+                        data: [c1, c2],
+                        backgroundColor: ['#075e54', '#128c7e']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            updateTemporalChart();
+        }
+
+        // --- New Actions Logic ---
+        function shareAppAction() {
+            if(navigator.share) {
+                navigator.share({
+                    title: 'Analizador de Chats de WhatsApp',
+                    text: 'Analiza tus chats de forma segura y local.',
+                    url: window.location.href
+                });
+            } else {
+                alert('Tu navegador no soporta la función de compartir nativa. Copia la URL manualmente.');
+            }
+        }
+
+        function sendBugEmail() {
+            const description = document.getElementById('bug-description').value;
+            const subject = encodeURIComponent("Reporte de Fallo - Analizador WA");
+            const body = encodeURIComponent(`Hola, encontré el siguiente fallo en la aplicación:\n\n${description}\n\nDispositivo: ${navigator.userAgent}`);
+            window.location.href = `mailto:vivirapp2020@gmail.com?subject=${subject}&body=${body}`;
+            closeModal('bug-report-modal');
+        }
+
+        async function getGeneratedDoc() {
+             const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Build simple PDF
+            doc.setFontSize(22);
+            doc.setTextColor(7, 94, 84); // WhatsApp Green
+            doc.text("Reporte de WhatsApp", 105, 20, { align: "center" });
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Conversación: ${participants.join(' & ')}`, 14, 40);
+            doc.text(`Total Mensajes: ${currentMessages.length}`, 14, 50);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 60);
+            
+            // Try to add the chart image if possible
+            try {
+                const canvas = document.getElementById('chart-pie');
+                const imgData = canvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', 14, 70, 100, 100);
+            } catch(e) { console.log("Chart image skipped"); }
+
+            return doc;
+        }
+
+        function getSmartFilename() {
+            let filename = "Reporte_Chat.pdf";
+            if (participants.length >= 2) {
+                const n1 = participants[0].split(' ')[0].replace(/[^a-z0-9]/gi, '');
+                const n2 = participants[1].split(' ')[0].replace(/[^a-z0-9]/gi, '');
+                filename = `${n1}_y_${n2}.pdf`;
+            }
+            return filename;
+        }
+
+        async function downloadReport() {
+            const doc = await getGeneratedDoc();
+            doc.save(getSmartFilename());
+        }
+
+        async function shareReport() {
+            if (!navigator.canShare) {
+                alert("Tu navegador no soporta compartir archivos directamente. Usa el botón 'Descargar'.");
+                return;
+            }
+
+            const doc = await getGeneratedDoc();
+            const filename = getSmartFilename();
+            const pdfBlob = doc.output('blob');
+            const file = new File([pdfBlob], filename, { type: "application/pdf" });
+
+            if (navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Reporte de Chat',
+                        text: 'Adjunto el reporte del análisis.'
+                    });
+                } catch (err) {
+                    console.error("Error sharing", err);
                 }
+            } else {
+                alert("No se pudo compartir el archivo. Intenta descargarlo.");
+            }
+        }
+
+        // --- IndexedDB ---
+        function getDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 2);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('slots')) {
+                        db.createObjectStore('slots', { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = e => reject(e);
+            });
+        }
+
+        async function saveSlot(data) {
+            const db = await getDB();
+            const tx = db.transaction('slots', 'readwrite');
+            await new Promise((resolve, reject) => {
+                const req = tx.objectStore('slots').put(data);
+                req.onsuccess = resolve;
+                req.onerror = reject;
+            });
+            updateSlotsUI();
+        }
+
+        async function getAllSlots() {
+            const db = await getDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction('slots', 'readonly');
+                const req = tx.objectStore('slots').getAll();
+                req.onsuccess = e => resolve(e.target.result || []);
             });
         }
         
-        // --- Report Generation ---
-        function closeReportModal() {
-            document.getElementById('report-modal').style.display = 'none';
+        async function deleteSlot(id) {
+            const db = await getDB();
+            const tx = db.transaction('slots', 'readwrite');
+            await new Promise(resolve => {
+                tx.objectStore('slots').delete(id);
+                tx.oncomplete = resolve;
+            });
+            updateSlotsUI();
         }
 
-        async function generateReport() {
-            const reportModal = document.getElementById('report-modal');
-            const reportStatus = document.getElementById('report-status');
-            const reportSpinner = document.getElementById('report-spinner');
-            const reportActions = document.getElementById('report-actions');
+        async function updateSlotsUI() {
+            const slots = await getAllSlots();
+            ui.slotsUsed.innerText = slots.length;
+            ui.slotsContainer.innerHTML = '';
 
-            reportModal.style.display = 'flex';
-            reportStatus.textContent = 'Generando tu informe en PDF...';
-            reportSpinner.style.display = 'block';
-            reportActions.style.display = 'none';
+            if(slots.length === 0) {
+                ui.slotsContainer.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);font-size:0.85rem;padding:20px;">No tienes conversaciones guardadas.</p>';
+            }
 
-            const sleep = ms => new Promise(res => setTimeout(res, ms));
+            slots.forEach(slot => {
+                const div = document.createElement('div');
+                div.className = 'slot-item';
+                div.innerHTML = `
+                    <div class="slot-info">
+                        <h4>${slot.name}</h4>
+                        <p>${slot.date} • ${slot.msgs.length} msgs</p>
+                    </div>
+                    <div class="slot-actions">
+                        <button class="primary-btn" style="padding:6px 12px; font-size:0.75rem;" onclick="loadSlot('${slot.id}')">Abrir</button>
+                        <button class="secondary-btn" style="padding:6px 10px; font-size:0.75rem; border-color:#e57373; color:#e57373;" onclick="deleteSlot('${slot.id}')">✕</button>
+                    </div>
+                `;
+                ui.slotsContainer.appendChild(div);
+            });
+        }
 
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                let yPos = 20;
-
-                const addPageIfNeeded = () => {
-                    if (yPos > 250) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                };
-
-                doc.setFontSize(22);
-                doc.text('Informe de Análisis de Chat', 105, yPos, { align: 'center' });
-                yPos += 10;
-
-                doc.setFontSize(12);
-                doc.text(`Conversación entre: ${senderNames.join(' y ')}`, 105, yPos, { align: 'center' });
-                yPos += 8;
-                doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 105, yPos, { align: 'center' });
-                yPos += 22;
-
-                // 1. General Stats
-                addPageIfNeeded();
-                doc.setFontSize(16);
-                doc.text('Estadísticas Generales', 14, yPos);
-                yPos += 10;
-                doc.setFontSize(12);
-                doc.text(`- Total de Mensajes: ${allMessages.length}`, 14, yPos);
-                yPos += 8;
-                const originalSenderNames = Array.from(new Set(allMessages.map(m=>m.author))).sort();
-                doc.text(`- Mensajes de ${senderNames[0]}: ${allMessages.filter(m => m.author === originalSenderNames[0]).length}`, 14, yPos);
-                yPos += 8;
-                doc.text(`- Mensajes de ${senderNames[1]}: ${allMessages.filter(m => m.author === originalSenderNames[1]).length}`, 14, yPos);
-                yPos += 12;
-
-                // 2. Distribution Chart
-                addPageIfNeeded();
-                const distCanvas = document.getElementById('messagesByAuthorChart');
-                if (distCanvas) {
-                    const distImage = await html2canvas(distCanvas.parentElement);
-                    doc.setFontSize(16);
-                    doc.text('Distribución de Mensajes', 14, yPos);
-                    yPos += 8;
-                    doc.addImage(distImage.toDataURL('image/png'), 'PNG', 14, yPos, 180, 90);
-                    yPos += 100;
-                }
-                
-                // 3. Search Analysis (if active)
-                if (filteredInfo.style.display !== 'none') {
-                    addPageIfNeeded();
-                    doc.setFontSize(16);
-                    doc.text(`Análisis de Búsqueda: "${keywordInput.value}"`, 14, yPos);
-                    yPos += 10;
-                    doc.setFontSize(12);
-                    doc.text(`- Mensajes totales en el filtro: ${document.getElementById('filtered-total-count').innerText}`, 14, yPos);
-                    yPos += 8;
-                    doc.text(`- Mensajes de ${senderNames[0]}: ${document.getElementById('filtered-jab-count').innerText}`, 14, yPos);
-                    yPos += 8;
-                    doc.text(`- Mensajes de ${senderNames[1]}: ${document.getElementById('filtered-angeles-count').innerText}`, 14, yPos);
-                    yPos += 12;
-                    
-                    const searchCanvas = document.getElementById('filteredMessagesByAuthorChart');
-                    if(searchCanvas && searchCanvas.style.display !== 'none') {
-                         const searchImage = await html2canvas(searchCanvas.parentElement);
-                         doc.addImage(searchImage.toDataURL('image/png'), 'PNG', 14, yPos, 180, 90);
-                         yPos += 100;
-                    }
-                }
-
-                // 4. Manual Selection (if active)
-                if (manualAnalysisInfo.style.display !== 'none') {
-                    addPageIfNeeded();
-                    doc.setFontSize(16);
-                    doc.text(`Análisis de Selección Manual: "${customChartTitleInput.value || 'Selección'}"`, 14, yPos);
-                    yPos += 10;
-                    doc.setFontSize(12);
-                    doc.text(`- Mensajes totales seleccionados: ${document.getElementById('selected-total-count').innerText}`, 14, yPos);
-                    yPos += 8;
-                    doc.text(`- Mensajes de ${senderNames[0]}: ${document.getElementById('selected-jab-count').innerText}`, 14, yPos);
-                    yPos += 8;
-                    doc.text(`- Mensajes de ${senderNames[1]}: ${document.getElementById('selected-angeles-count').innerText}`, 14, yPos);
-                    yPos += 12;
-                    
-                    const manualCanvas = document.getElementById('customMessagesByAuthorChart');
-                    if(manualCanvas && manualCanvas.parentElement.style.display !== 'none') {
-                         const manualImage = await html2canvas(manualCanvas.parentElement);
-                         doc.addImage(manualImage.toDataURL('image/png'), 'PNG', 14, yPos, 180, 90);
-                         yPos += 100;
-                    }
-                }
-
-                // 5. Temporal Analysis (All 3)
-                addPageIfNeeded();
-                doc.setFontSize(16);
-                doc.text('Análisis de Tendencia', 14, yPos);
-                yPos += 10;
-
-                const originalTimeframe = document.getElementById('timeframeSelect').value;
-                const temporalContainer = document.getElementById('temporalMessagesChart').parentElement;
-                const timeframes = [
-                    { value: 'hour', title: 'Tendencia por Hora del Día' },
-                    { value: 'day', title: 'Tendencia por Día de la Semana' },
-                    { value: 'month', title: 'Tendencia por Mes' }
-                ];
-
-                for (const tf of timeframes) {
-                    document.getElementById('timeframeSelect').value = tf.value;
-                    renderChartTemporal();
-                    await sleep(500); // Wait for chart animation
-
-                    addPageIfNeeded();
-                    const canvasImage = await html2canvas(temporalContainer);
-                    doc.setFontSize(14);
-                    doc.text(tf.title, 14, yPos);
-                    yPos += 8;
-                    doc.addImage(canvasImage.toDataURL('image/png'), 'PNG', 14, yPos, 180, 90);
-                    yPos += 100;
-                }
-                document.getElementById('timeframeSelect').value = originalTimeframe;
-                renderChartTemporal();
-                
-                generatedPDF = doc;
-                reportStatus.textContent = '¡Tu informe está listo!';
-                reportSpinner.style.display = 'none';
-                reportActions.style.display = 'flex';
-
-            } catch(error) {
-                console.error("Error al generar PDF:", error);
-                showMessageBox("No se pudo generar el informe en PDF.");
-                closeReportModal();
+        async function loadSlot(id) {
+            const slots = await getAllSlots();
+            const slot = slots.find(s => s.id === id);
+            if(slot) {
+                loadChat(slot);
             }
         }
 
-        function downloadPDF() {
-            if (generatedPDF) {
-                generatedPDF.save('informe-chat-whatsapp.pdf');
-                closeReportModal();
-            }
+        // --- Modals Generic ---
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
         }
 
-        async function sharePDF() {
-            if (!generatedPDF) return;
-            try {
-                const pdfBlob = generatedPDF.output('blob');
-                const pdfFile = new File([pdfBlob], "informe-chat.pdf", { type: "application/pdf" });
-
-                if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-                    await navigator.share({
-                        files: [pdfFile],
-                        title: 'Informe de Chat',
-                        text: `Aquí está el informe de análisis del chat entre ${senderNames.join(' y ')}.`,
-                    });
-                } else {
-                    showMessageBox('La función de compartir archivos no es compatible con este navegador.');
-                }
-            } catch (error) {
-                console.error("Error al compartir PDF:", error);
-                showMessageBox("No se pudo compartir el archivo.");
-            } finally {
-                closeReportModal();
+        // --- UI Utilities ---
+        window.switchMobileTab = (tab) => {
+            const tabs = document.querySelectorAll('.nav-item');
+            tabs.forEach(t => t.classList.remove('active'));
+            if (tab === 'chat') {
+                tabs[0].classList.add('active');
+                ui.msgContainer.classList.remove('hidden');
+                document.getElementById('dashboard-container').classList.remove('active');
+            } else {
+                tabs[1].classList.add('active');
+                ui.msgContainer.classList.add('hidden');
+                document.getElementById('dashboard-container').classList.add('active');
             }
+        };
+
+        window.toggleTheme = () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        };
+
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        }
+
+        function handleSplashScreen() {
+            const splash = document.getElementById('splash-screen');
+            if (localStorage.getItem('hideSplash') === 'true') {
+                splash.style.display = 'none';
+            } else {
+                setTimeout(() => {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.style.display = 'none', 500);
+                }, 1500);
+            }
+            document.getElementById('no-splash').addEventListener('change', (e) => {
+                localStorage.setItem('hideSplash', e.target.checked);
+            });
         }
     </script>
 </body>
 </html>
-
