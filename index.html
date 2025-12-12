@@ -568,6 +568,57 @@
         #progress-bar { width: 100%; height: 4px; background-color: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
         #progress-fill { height: 100%; width: 0%; background: var(--gradient-primary); transition: width 0.3s; }
 
+        /* --- Update Notification Toast --- */
+        #update-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 3000;
+            border: 1px solid var(--color-secondary);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        #update-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #update-toast p {
+            margin: 0;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+
+        #update-toast button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        #btn-update-confirm {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--neon-glow);
+        }
+
+        #btn-update-cancel {
+            background: transparent;
+            color: var(--color-text-secondary);
+        }
+
         /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
             #main-content { flex-direction: column; }
@@ -651,6 +702,18 @@
             <textarea id="bug-description" rows="4" placeholder="Ej: La gráfica no carga..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
             <button class="primary-btn" style="width:100%; margin-bottom: 8px;" onclick="sendBugEmail()">Enviar Correo</button>
             <button class="secondary-btn" style="width:100%;" onclick="closeModal('bug-report-modal')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Update Toast -->
+    <div id="update-toast">
+        <div>
+            <p style="font-weight:bold; margin-bottom:4px;">Actualización disponible</p>
+            <p>Hay una nueva versión de la app. ¿Actualizar ahora?</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button id="btn-update-cancel" onclick="dismissUpdate()">No</button>
+            <button id="btn-update-confirm" onclick="applyUpdate()">Sí</button>
         </div>
     </div>
 
@@ -1568,12 +1631,55 @@
             });
         }
         
-        // Service Worker Registration
+        // Service Worker Registration & Update Logic
+        let newWorker;
+
+        function showUpdateToast(worker) {
+            newWorker = worker;
+            document.getElementById('update-toast').classList.add('show');
+        }
+
+        function dismissUpdate() {
+            document.getElementById('update-toast').classList.remove('show');
+        }
+
+        window.applyUpdate = function() {
+            if (newWorker) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+            dismissUpdate();
+        };
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('SW registrado'))
-                    .catch(err => console.log('SW error', err));
+                navigator.serviceWorker.register('service-worker.js').then(reg => {
+                    console.log('SW registrado');
+
+                    // 1. Chequeo al cargar si ya hay uno esperando
+                    if (reg.waiting) {
+                        showUpdateToast(reg.waiting);
+                        return;
+                    }
+
+                    // 2. Chequeo si se instala uno nuevo mientras se usa la app
+                    reg.addEventListener('updatefound', () => {
+                        const newSw = reg.installing;
+                        newSw.addEventListener('statechange', () => {
+                            if (newSw.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Nuevo SW instalado y listo, pero no activo (waiting)
+                                showUpdateToast(newSw);
+                            }
+                        });
+                    });
+                }).catch(err => console.log('SW error', err));
+
+                // 3. Recargar página cuando el nuevo SW tome el control
+                let refreshing;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    window.location.reload();
+                    refreshing = true;
+                });
             });
         }
     </script>

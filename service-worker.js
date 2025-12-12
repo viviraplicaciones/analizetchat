@@ -16,7 +16,8 @@ const urlsToCache = [
 
 // --- INSTALACIÓN Y ACTIVACIÓN ---
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Forzar activación inmediata
+  // Eliminamos self.skipWaiting() automático para permitir que el usuario decida cuándo actualizar
+  // self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -24,6 +25,13 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+});
+
+// --- NUEVO: Escuchar mensaje para forzar actualización ---
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // --- EVENTO ACTIVATE ---
