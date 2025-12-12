@@ -1,11 +1,11 @@
-const CACHE_NAME = 'analizetchat-v9-final'; // Incrementado
+const CACHE_NAME = 'analizetchat-v10-fix'; // Incrementado para forzar actualización
 const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // Mismo nombre que en index.html
 
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './version.json',
+  // './version.json', // COMENTADO: Si este archivo no existe, rompe la instalación. Descomentar solo si existe.
   'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js',
@@ -20,7 +20,17 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log('Cache abierto');
-      return cache.addAll(urlsToCache);
+      // Usamos addAll y capturamos errores específicos para depuración
+      return cache.addAll(urlsToCache).catch(err => {
+        console.error('Error al cachear archivos en install:', err);
+        // Opcional: Intentar cachear uno por uno para saber cuál falla (solo para debug)
+        /*
+        return Promise.all(urlsToCache.map(url => {
+            return cache.add(url).catch(e => console.error('Fallo al cachear:', url, e));
+        })); 
+        */
+        throw err; // Re-lanzar para que la instalación falle correctamente si es crítico
+      });
     })
   );
 });
