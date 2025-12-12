@@ -1,11 +1,11 @@
-const CACHE_NAME = 'analizetchat-v11-final'; // Incrementado para forzar actualización
+const CACHE_NAME = 'analizetchat-v12-final'; // Versión actualizada
 const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // Mismo nombre que en index.html
 
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  // './version.json', // Descomentar solo si existe el archivo
+  // './version.json', // Descomentar si existe
   'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js',
@@ -16,13 +16,12 @@ const urlsToCache = [
 
 // --- INSTALACIÓN ---
 self.addEventListener('install', event => {
+  // Eliminamos skipWaiting automático para que el usuario decida actualizar
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log('Cache abierto');
-      return cache.addAll(urlsToCache).catch(err => {
-        console.error('Error al cachear:', err);
-        // Fallback: intentar cachear lo que se pueda o simplemente loguear
-      });
+      // Usamos catch para evitar que un fallo en un archivo rompa toda la instalación
+      return cache.addAll(urlsToCache).catch(err => console.error('Fallo en caché inicial:', err));
     })
   );
 });
@@ -50,7 +49,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. INTERCEPTOR DE SHARE TARGET
+  // 1. INTERCEPTOR DE SHARE TARGET (Evita error 404 en exportación directa)
   if (event.request.method === 'POST' && url.pathname.endsWith('/_share-target')) {
     event.respondWith(
       (async () => {
@@ -77,7 +76,7 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// --- HELPER DB ---
+// --- HELPER DB (Guardar archivo compartido) ---
 function saveSharedFileToDB(file) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(SHARED_DB_NAME, 4);
@@ -97,15 +96,15 @@ function saveSharedFileToDB(file) {
   });
 }
 
-// --- BACKGROUND SYNC ---
+// --- BACKGROUND SYNC (Placeholders para funcionalidad futura) ---
 self.addEventListener('periodicsync', event => {
   if (event.tag === 'check-for-updates') {
-    // Lógica futura
+    // Lógica futura de actualización
   }
 });
 
 self.addEventListener('sync', event => {
   if (event.tag === 'send-bug-report') {
-    // Lógica futura
+    // Lógica futura de envío de reportes
   }
 });

@@ -8,16 +8,16 @@
     <meta name="theme-color" content="#128c7e">
     <meta name="description" content="Analiza tus chats de WhatsApp. Soporte Multimedia Completo.">
     
-    <!-- iOS support -->
+    <!-- Meta tags de capacidad PWA modernas y legacy -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Analizador WA">
     
-    <!-- Corregido: Usamos la URL raw que sabemos que funciona -->
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png">
     <link rel="icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" type="image/x-icon">
     
-    <!-- Fonts -->
+    <!-- Fonts: Solo Roboto -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -27,8 +27,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <!-- Eliminada referencia a styles.css que causaba error 404 -->
 
     <style>
         :root {
@@ -41,8 +39,12 @@
             --color-text-primary: #111b21;
             --color-text-secondary: #54656f;
             --color-border: #e9edef;
-            --color-msg-in: #d9fdd3;
-            --color-msg-out: #ffffff;
+            
+            /* Message Colors - Improved Contrast */
+            --color-msg-in: #d9fdd3; /* Greenish for Sender (You) */
+            --color-msg-out: #ffffff; /* White for Recipient (Other) */
+            --color-sender-name: #075e54; /* Dark Green text for Sender name */
+            --color-recipient-name: #1976d2; /* Deep Blue text for Recipient name (Contrast) */
             
             /* Neon & Modern Accents */
             --neon-glow: 0 0 10px rgba(18, 140, 126, 0.4);
@@ -67,6 +69,7 @@
         }
 
         body.dark-mode {
+            /* Core Colors Dark */
             --color-primary: #00a884;
             --color-secondary: #00a884;
             --color-tertiary: #005c4b;
@@ -75,12 +78,17 @@
             --color-text-primary: #e9edef;
             --color-text-secondary: #8696a0;
             --color-border: #2a3942;
-            --color-msg-in: #005c4b;
-            --color-msg-out: #202c33;
+            
+            /* Message Colors Dark - Improved Contrast */
+            --color-msg-in: #005c4b; /* Dark Green for Sender */
+            --color-msg-out: #202c33; /* Dark Gray/Blue for Recipient */
+            --color-sender-name: #00a884; /* Bright Green text */
+            --color-recipient-name: #4fc3f7; /* Light Blue text (Contrast) */
             
             --neon-glow: 0 0 12px rgba(0, 255, 191, 0.3);
             --gradient-primary: linear-gradient(135deg, #00a884, #00cc99);
             
+            /* Active Colors Dark Mode */
             --bg-active-summary: rgba(7, 94, 84, 0.15);
             --bg-active-dist: rgba(33, 150, 243, 0.1);
             --bg-active-temp: rgba(156, 39, 176, 0.1);
@@ -275,7 +283,9 @@
             margin-bottom: 2px;
         }
         
-        .sender .msg-author { color: var(--color-primary); }
+        /* New Author Colors for Better Contrast */
+        .sender .msg-author { color: var(--color-sender-name); }
+        .recipient .msg-author { color: var(--color-recipient-name); }
 
         .msg-media { max-width: 100%; border-radius: 6px; margin: 2px 0; display: block; }
         .msg-audio { width: 100%; min-width: 180px; margin-top: 4px; }
@@ -463,7 +473,7 @@
             line-height: 1.1;
         }
 
-        /* --- Modals --- */
+        /* --- Modals (Fixed Visibility) --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -778,8 +788,8 @@
                         <summary>Resumen General</summary>
                         <div class="dashboard-content">
                             <div class="stat-card"><span>Total:</span> <strong id="stat-total">0</strong></div>
-                            <div class="stat-card" style="color:var(--color-primary);"><span id="label-p1">P1:</span> <strong id="stat-p1">0</strong></div>
-                            <div class="stat-card" style="color:#128c7e;"><span id="label-p2">P2:</span> <strong id="stat-p2">0</strong></div>
+                            <div class="stat-card" style="color:var(--color-sender-name);"><span id="label-p1">P1:</span> <strong id="stat-p1">0</strong></div>
+                            <div class="stat-card" style="color:var(--color-recipient-name);"><span id="label-p2">P2:</span> <strong id="stat-p2">0</strong></div>
                         </div>
                     </details>
                     
@@ -1225,7 +1235,7 @@
                     labels: [p1, p2],
                     datasets: [{
                         data: [c1, c2],
-                        backgroundColor: ['#075e54', '#128c7e']
+                        backgroundColor: ['#075e54', '#1976d2']
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -1260,7 +1270,7 @@
                     datasets: [{
                         label: 'Resultados',
                         data: [c1, c2],
-                        backgroundColor: ['#075e54', '#128c7e']
+                        backgroundColor: ['#075e54', '#1976d2']
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
@@ -1338,7 +1348,7 @@
                     labels: [p1, p2],
                     datasets: [{
                         data: [c1, c2],
-                        backgroundColor: ['#075e54', '#128c7e']
+                        backgroundColor: ['#075e54', '#1976d2']
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
