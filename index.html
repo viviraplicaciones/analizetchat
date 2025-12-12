@@ -6,7 +6,7 @@
     <title>Analizador de Chats de WhatsApp</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#128c7e">
-    <meta name="description" content="Analiza tus chats de WhatsApp. Conversaciones ilimitadas.">
+    <meta name="description" content="Analiza tus chats de WhatsApp. Soporte Multimedia Completo.">
     
     <!-- iOS support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,8 +16,10 @@
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png">
     <link rel="icon" href="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" type="image/x-icon">
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Fonts: Solo Roboto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -27,38 +29,62 @@
 
     <style>
         :root {
+            /* Core Colors */
             --color-primary: #075e54;
             --color-secondary: #128c7e;
             --color-tertiary: #25d366;
-            --color-bg: #f2f2f7; /* iOS like background */
+            --color-bg: #f0f2f5; 
             --color-surface: #ffffff;
             --color-text-primary: #111b21;
-            --color-text-secondary: #8696a0;
+            --color-text-secondary: #54656f;
             --color-border: #e9edef;
             --color-msg-in: #d9fdd3;
             --color-msg-out: #ffffff;
-            --font-family-title: 'Roboto Condensed', sans-serif;
-            --font-family-content: 'Roboto', sans-serif;
+            
+            /* Neon & Modern Accents (Restored Subtle Glow) */
+            --neon-glow: 0 0 10px rgba(18, 140, 126, 0.4);
+            --gradient-primary: linear-gradient(135deg, #128c7e, #25d366);
+            
+            /* Dimensions (Restored Compact Values) */
             --header-height: 60px;
             --safe-area-top: env(safe-area-inset-top);
             --safe-area-bottom: env(safe-area-inset-bottom);
-            --shadow-subtle: 0 1px 2px rgba(0,0,0,0.06);
-            --radius-md: 12px;
-            --radius-lg: 16px;
+            --radius-md: 10px; 
+            --shadow-subtle: 0 1px 3px rgba(0,0,0,0.1);
+            
+            /* Typography - UNIFICADA A ROBOTO */
+            --font-family-main: 'Roboto', sans-serif;
+            
+            /* Active Section Colors (Subtle backgrounds) */
+            --bg-active-summary: rgba(7, 94, 84, 0.04);
+            --bg-active-dist: rgba(33, 150, 243, 0.04);
+            --bg-active-temp: rgba(156, 39, 176, 0.04);
+            --bg-active-search: rgba(255, 193, 7, 0.04);
+            --bg-active-manual: rgba(255, 87, 34, 0.04);
         }
 
         body.dark-mode {
+            /* Core Colors Dark */
             --color-primary: #00a884;
             --color-secondary: #00a884;
             --color-tertiary: #005c4b;
-            --color-bg: #111b21;
-            --color-surface: #202c33;
+            --color-bg: #0b141a;
+            --color-surface: #1f2c34;
             --color-text-primary: #e9edef;
             --color-text-secondary: #8696a0;
             --color-border: #2a3942;
             --color-msg-in: #005c4b;
             --color-msg-out: #202c33;
-            --shadow-subtle: 0 1px 2px rgba(0,0,0,0.2);
+            
+            --neon-glow: 0 0 12px rgba(0, 255, 191, 0.3);
+            --gradient-primary: linear-gradient(135deg, #00a884, #00cc99);
+            
+            /* Active Colors Dark Mode */
+            --bg-active-summary: rgba(7, 94, 84, 0.15);
+            --bg-active-dist: rgba(33, 150, 243, 0.1);
+            --bg-active-temp: rgba(156, 39, 176, 0.1);
+            --bg-active-search: rgba(255, 193, 7, 0.08);
+            --bg-active-manual: rgba(255, 87, 34, 0.1);
         }
 
         * {
@@ -71,7 +97,7 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            font-family: var(--font-family-content);
+            font-family: var(--font-family-main); /* Cambio Global */
             background-color: var(--color-bg);
             color: var(--color-text-primary);
             overflow: hidden;
@@ -92,13 +118,14 @@
             height: var(--header-height);
             display: flex;
             align-items: center;
-            padding: 0 16px;
+            padding: 0 15px;
             padding-top: var(--safe-area-top);
             background-color: var(--color-surface);
             border-bottom: 1px solid var(--color-border);
             justify-content: space-between;
             z-index: 100;
             flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
         #header-info {
@@ -111,8 +138,8 @@
 
         #interlocutor-names {
             margin: 0;
-            font-size: 1rem;
-            font-weight: 500;
+            font-size: 1.1rem;
+            font-weight: 700; /* Roboto Bold */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -120,7 +147,7 @@
         }
         
         #header-stats-preview {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             color: var(--color-text-secondary);
             white-space: nowrap;
             overflow: hidden;
@@ -129,12 +156,12 @@
 
         .header-buttons {
             display: flex;
-            gap: 4px;
+            gap: 5px;
             align-items: center;
         }
 
         .icon-btn {
-            background: none;
+            background: transparent;
             border: none;
             padding: 8px;
             cursor: pointer;
@@ -150,13 +177,9 @@
             background-color: rgba(0,0,0,0.05);
         }
         
-        body.dark-mode .icon-btn:hover {
-            background-color: rgba(255,255,255,0.1);
-        }
-
         .icon-btn svg {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             fill: currentColor;
         }
         
@@ -171,20 +194,19 @@
         #messages-container {
             flex: 1;
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            background-size: 400px; /* Subtle pattern */
-            background-color: #efe7dd; /* Default WA bg color */
+            background-size: 400px;
+            background-color: #efe7dd;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             display: flex;
             flex-direction: column;
             gap: 6px;
-            padding: 12px;
+            padding: 10px;
             padding-bottom: 80px; 
         }
         
         body.dark-mode #messages-container {
             background-color: #0b141a;
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
             background-blend-mode: overlay;
         }
         
@@ -192,7 +214,7 @@
             flex: 1;
             display: flex; 
             flex-direction: column;
-            padding: 16px;
+            padding: 15px;
             background-color: var(--color-bg);
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
@@ -204,20 +226,18 @@
         /* --- Message Bubbles --- */
         .whatsapp-message {
             max-width: 85%;
-            padding: 6px 9px 8px 9px;
-            border-radius: 10px;
+            padding: 6px 8px;
+            border-radius: 8px;
             position: relative;
             word-wrap: break-word;
             box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-            font-size: 14.5px;
-            line-height: 1.35;
+            font-size: 14.2px;
+            line-height: 1.3;
             cursor: pointer;
-            transition: transform 0.1s, box-shadow 0.2s;
+            transition: transform 0.1s;
         }
         
-        .whatsapp-message:active {
-            transform: scale(0.98);
-        }
+        .whatsapp-message:active { transform: scale(0.98); }
 
         .whatsapp-message.sender {
             background-color: var(--color-msg-in);
@@ -232,9 +252,8 @@
         }
         
         .whatsapp-message.selected {
-            outline: 2px solid var(--color-tertiary);
-            outline-offset: 2px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 2px solid var(--color-secondary);
+            box-shadow: 0 0 8px var(--color-secondary);
         }
 
         .msg-meta {
@@ -242,20 +261,25 @@
             justify-content: flex-end;
             align-items: center;
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 11px;
             color: var(--color-text-secondary);
             opacity: 0.8;
             gap: 4px;
         }
         
         .msg-author {
-            font-weight: 500;
-            color: var(--color-text-secondary); /* More subtle author name */
-            font-size: 12px;
+            font-weight: 700;
+            color: var(--color-text-secondary);
+            font-size: 12.5px;
             margin-bottom: 2px;
         }
         
         .sender .msg-author { color: var(--color-primary); }
+
+        .msg-media { max-width: 100%; border-radius: 6px; margin: 2px 0; display: block; }
+        .msg-audio { width: 100%; min-width: 180px; margin-top: 4px; }
+        .msg-video { max-width: 100%; border-radius: 6px; }
+        .system-msg { font-style: italic; color: var(--color-text-secondary); font-size: 0.85em; display: flex; align-items: center; gap: 5px; }
 
         /* --- Dashboard Components --- */
         details {
@@ -264,42 +288,53 @@
             box-shadow: var(--shadow-subtle);
             margin-bottom: 12px;
             overflow: hidden;
-            border: 1px solid var(--color-border); /* Subtle border */
+            border: 1px solid var(--color-border);
+            transition: background-color 0.3s ease;
         }
 
+        /* Active State Color Logic */
+        details[open]#details-summary { background-color: var(--bg-active-summary); border-color: var(--color-secondary); }
+        details[open]#details-dist { background-color: var(--bg-active-dist); border-color: #2196f3; }
+        details[open]#details-temp { background-color: var(--bg-active-temp); border-color: #9c27b0; }
+        details[open]#details-search { background-color: var(--bg-active-search); border-color: #ffc107; }
+        details[open]#manual-analysis-details { background-color: var(--bg-active-manual); border-color: #ff5722; }
+
         summary {
-            padding: 14px 16px;
-            font-weight: 600;
-            font-size: 0.95rem;
+            padding: 12px 15px;
+            font-weight: 700;
+            font-size: 1rem;
             cursor: pointer;
             list-style: none;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background-color: var(--color-surface);
             color: var(--color-text-primary);
         }
         
         summary::-webkit-details-marker { display: none; }
         summary::after {
-            content: '+';
-            font-size: 1.2rem;
-            font-weight: 300;
+            content: '›';
+            font-size: 1.5rem;
+            font-weight: 400;
             color: var(--color-text-secondary);
             transition: transform 0.2s;
+            transform: rotate(90deg);
         }
-        details[open] summary::after { transform: rotate(45deg); }
+        details[open] summary::after { transform: rotate(-90deg); color: var(--color-secondary); }
         
         .dashboard-content {
-            padding: 16px;
-            border-top: 1px solid var(--color-border);
-            background-color: var(--color-surface);
+            padding: 15px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            background-color: transparent;
+            animation: fadeIn 0.3s ease;
         }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .stat-card {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 0.9rem;
             padding-bottom: 6px;
             border-bottom: 1px dashed var(--color-border);
@@ -308,7 +343,7 @@
         
         .chart-wrapper {
             position: relative;
-            height: 220px;
+            height: 200px;
             width: 100%;
             margin-top: 10px;
         }
@@ -316,66 +351,81 @@
         .control-group {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             flex-wrap: wrap;
         }
         
         input[type="text"], select, textarea {
             flex: 1;
-            padding: 10px 12px;
+            padding: 8px 10px;
             border: 1px solid var(--color-border);
-            border-radius: 8px;
-            background: var(--color-bg);
+            border-radius: 6px;
+            background: var(--color-surface);
             color: var(--color-text-primary);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             outline: none;
-            transition: border-color 0.2s;
+            font-family: var(--font-family-main);
         }
         
-        input:focus, textarea:focus {
-            border-color: var(--color-primary);
+        input:focus, textarea:focus { 
+            border-color: #bc13fe;
+            box-shadow: 0 0 5px rgba(188, 19, 254, 0.3);
+        }
+
+        /* --- Buttons --- */
+        button {
+            font-family: var(--font-family-main);
         }
 
         button.primary-btn {
-            background-color: var(--color-secondary);
+            background: var(--gradient-primary);
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 9px 16px;
             border-radius: 8px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 0.9rem;
-            transition: opacity 0.2s;
+            box-shadow: 0 2px 8px rgba(18, 140, 126, 0.3); 
+            transition: all 0.2s ease;
         }
         
-        button.primary-btn:active { opacity: 0.8; }
+        button.primary-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--neon-glow);
+        }
         
         button.secondary-btn {
             background-color: transparent;
             border: 1px solid var(--color-secondary);
             color: var(--color-secondary);
-            padding: 9px 15px;
+            padding: 8px 14px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        button.secondary-btn:hover {
+            background-color: rgba(18, 140, 126, 0.05);
         }
 
-        /* --- SUBTLE Footer Action Buttons (Modified for 4 columns) --- */
+        /* --- Footer Action Buttons --- */
         .footer-actions {
             display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 Columns */
-            gap: 8px; /* Reduced gap */
-            margin-top: 24px;
-            padding-top: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 20px;
+            padding-top: 15px;
             border-top: 1px solid var(--color-border);
         }
 
         .action-card-btn {
             background: transparent;
             border: 1px solid var(--color-border);
-            border-radius: 12px;
-            padding: 10px 4px; /* Slightly less padding */
+            border-radius: 8px;
+            padding: 8px 4px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -388,28 +438,27 @@
 
         .action-card-btn:hover {
             background-color: var(--color-surface);
-            border-color: var(--color-secondary);
-            color: var(--color-secondary);
             transform: translateY(-2px);
-            box-shadow: var(--shadow-subtle);
-        }
-
-        .action-card-btn svg {
-            width: 22px; /* Adjusted Icon Size */
-            height: 22px;
-            margin-bottom: 6px;
-            fill: currentColor;
-            opacity: 0.8;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         
-        .action-card-btn:hover svg {
-            opacity: 1;
-            fill: var(--color-secondary);
+        .action-card-btn:hover svg { filter: drop-shadow(0 0 3px currentColor); }
+        .action-card-btn:nth-child(1):hover { color: #00bcd4; border-color: #00bcd4; }
+        .action-card-btn:nth-child(2):hover { color: #ffc107; border-color: #ffc107; }
+        .action-card-btn:nth-child(3):hover { color: #25d366; border-color: #25d366; }
+        .action-card-btn:nth-child(4):hover { color: #ff5722; border-color: #ff5722; }
+
+        .action-card-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-bottom: 4px;
+            fill: currentColor;
+            opacity: 0.85;
         }
 
         .action-card-btn span {
-            font-size: 0.7rem; /* Smaller text for 4 columns */
-            font-weight: 500;
+            font-size: 0.65rem;
+            font-weight: 600;
             line-height: 1.1;
         }
 
@@ -418,7 +467,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(3px);
             z-index: 2000;
             display: none;
             justify-content: center;
@@ -429,11 +478,11 @@
         .modal-content {
             background: var(--color-surface);
             width: 100%;
-            max-width: 380px;
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-            max-height: 90vh;
+            max-width: 350px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 85vh;
             overflow-y: auto;
             text-align: center;
             border: 1px solid var(--color-border);
@@ -441,21 +490,19 @@
 
         .slot-item {
             border: 1px solid var(--color-border);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: var(--color-surface);
             text-align: left;
-            transition: background 0.2s;
         }
-        .slot-item:active { background-color: var(--color-bg); }
         
-        .slot-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); }
-        .slot-info p { margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); }
-        .slot-actions { display: flex; gap: 8px; }
+        .slot-info h4 { margin: 0 0 2px 0; font-size: 0.9rem; font-weight: 600; color: var(--color-text-primary); }
+        .slot-info p { margin: 0; font-size: 0.7rem; color: var(--color-text-secondary); }
+        .slot-actions { display: flex; gap: 5px; }
 
         /* --- Upload Section --- */
         #file-upload-section {
@@ -480,33 +527,33 @@
 
         .upload-card {
             background: var(--color-surface);
-            padding: 40px 24px;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 360px;
+            max-width: 340px;
             border: 1px solid var(--color-border);
         }
         
         .custom-file-upload {
             display: block;
-            background-color: var(--color-secondary);
+            background: var(--gradient-primary);
             color: white;
-            padding: 16px;
+            padding: 12px;
             border-radius: 50px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 1rem;
-            margin: 24px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            font-size: 0.95rem;
+            margin: 20px 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             transition: transform 0.2s;
             text-align: center;
         }
         .custom-file-upload:active { transform: scale(0.98); }
         
-        #loading-progress-container { display: none; width: 100%; margin-top: 20px; }
-        #progress-bar { width: 100%; height: 4px; background-color: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
-        #progress-fill { height: 100%; width: 0%; background-color: var(--color-secondary); transition: width 0.3s; }
+        #loading-progress-container { display: none; width: 100%; margin-top: 15px; }
+        #progress-bar { width: 100%; height: 4px; background-color: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+        #progress-fill { height: 100%; width: 0%; background: var(--gradient-primary); transition: width 0.3s; }
 
         /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
@@ -514,7 +561,7 @@
             #dashboard-container {
                 display: none; 
                 flex: 1; width: 100%; max-width: 100%; border-left: none; z-index: 10;
-                padding-bottom: 120px; /* Safe space for bottom nav + footer buttons */
+                padding-bottom: 120px;
             }
             #dashboard-container.active { display: flex; }
             #messages-container.hidden { display: none; }
@@ -532,11 +579,10 @@
             .nav-item {
                 flex: 1; display: flex; flex-direction: column;
                 align-items: center; justify-content: center;
-                color: var(--color-text-secondary); font-size: 0.75rem; cursor: pointer;
-                transition: color 0.2s;
+                color: var(--color-text-secondary); font-size: 0.7rem; cursor: pointer;
             }
-            .nav-item.active { color: var(--color-secondary); font-weight: 600; }
-            .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
+            .nav-item.active { color: var(--color-secondary); font-weight: 700; }
+            .nav-item svg { width: 22px; height: 22px; margin-bottom: 3px; fill: currentColor; }
         }
         @media (min-width: 769px) { #mobile-nav { display: none; } }
 
@@ -553,49 +599,44 @@
 
     <!-- Splash Screen -->
     <div id="splash-screen">
-        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" alt="Logo" width="90" style="border-radius:18px; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-        <h2 style="color: var(--color-primary); font-weight: 300; letter-spacing: 1px;">Analizador WA</h2>
-        <div style="margin-top:24px;">
+        <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" alt="Logo" width="80" style="border-radius:16px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--color-primary); font-family: var(--font-family-main); font-weight: 700; letter-spacing: 1px; margin-bottom: 20px;">Analizador WA</h2>
+        <div>
             <input type="checkbox" id="no-splash" style="accent-color: var(--color-primary);"> 
-            <label for="no-splash" style="color:var(--color-text-secondary); font-size: 0.9rem;">No mostrar de nuevo</label>
+            <label for="no-splash" style="color:var(--color-text-secondary); font-size: 0.85rem;">No mostrar de nuevo</label>
         </div>
     </div>
 
     <!-- Chat Manager Modal -->
     <div id="chat-manager-modal" class="modal-overlay">
         <div class="modal-content">
-            <h3 style="margin-top:0; color:var(--color-primary);">Mis Conversaciones</h3>
-            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom: 15px;">
-                Espacios usados: <strong id="slots-used">0</strong> (Ilimitado)
+            <h3 style="margin-top:0; color:var(--color-primary); font-family:var(--font-family-main);">Mis Conversaciones</h3>
+            <p style="font-size:0.8rem; color:var(--color-text-secondary); margin-bottom: 15px;">
+                Espacios usados: <strong id="slots-used" style="color: var(--color-secondary);">0</strong>
             </p>
             <div id="slots-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
                 <!-- Slots injected via JS -->
             </div>
             
-            <button class="primary-btn" onclick="triggerFileUpload()" style="width:100%; margin-bottom: 10px;">
+            <button class="primary-btn" onclick="triggerFileUpload()" style="width:100%; margin-bottom: 8px;">
                 + Agregar Nuevo Chat
             </button>
             <button class="secondary-btn" style="width:100%;" onclick="closeModal('chat-manager-modal')">Cerrar</button>
         </div>
     </div>
 
-    <!-- Bug Report Modal (Improved) -->
+    <!-- Bug Report Modal -->
     <div id="bug-report-modal" class="modal-overlay">
         <div class="modal-content">
-            <div style="background-color: rgba(255, 193, 7, 0.2); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+            <div style="background-color: rgba(255, 193, 7, 0.15); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="#ffc107"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
             </div>
             <h3 style="margin-top:0; color:var(--color-text-primary);">Reportar un Fallo</h3>
-            <p style="font-size:0.9rem; color:var(--color-text-secondary); margin-bottom: 15px;">
+            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom: 15px;">
                 Describe el problema que encontraste:
             </p>
-            
-            <!-- NEW: Textarea for input -->
-            <textarea id="bug-description" rows="4" placeholder="Ej: La gráfica no carga cuando..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
-
-            <button class="primary-btn" style="width:100%; margin-bottom: 10px;" onclick="sendBugEmail()">
-                Enviar Correo
-            </button>
+            <textarea id="bug-description" rows="4" placeholder="Ej: La gráfica no carga..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
+            <button class="primary-btn" style="width:100%; margin-bottom: 8px;" onclick="sendBugEmail()">Enviar Correo</button>
             <button class="secondary-btn" style="width:100%;" onclick="closeModal('bug-report-modal')">Cancelar</button>
         </div>
     </div>
@@ -604,28 +645,21 @@
     <div id="file-upload-section">
         <div class="upload-card">
             <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" width="60" style="border-radius:12px; margin-bottom:15px;">
-            <h1 style="margin:0 0 8px 0; color:var(--color-text-primary); font-size:1.6rem;">Analizador de Chats</h1>
-            <p style="color:var(--color-text-secondary); margin-bottom:24px; font-size:0.9rem;">
-                Sube tu archivo .txt o .zip.<br>Análisis 100% local y seguro.
+            <h1 style="margin:0 0 5px 0; color:var(--color-text-primary); font-family:var(--font-family-main); font-size:1.5rem; font-weight: 700;">Analizador de Chats</h1>
+            <p style="color:var(--color-text-secondary); margin-bottom:20px; font-size:0.9rem;">
+                Sube tu archivo .txt o .zip.<br>Soporte Multimedia 100% Local.
             </p>
-            
-            <button class="secondary-btn" onclick="openModal('chat-manager-modal')" style="margin-bottom: 10px; width: 100%; border: none; background: rgba(0,0,0,0.05);">
+            <button class="secondary-btn" onclick="openModal('chat-manager-modal')" style="margin-bottom: 10px; width: 100%; border: 1px solid var(--color-border); background: rgba(0,0,0,0.02);">
                 📂 Ver Mis Conversaciones
             </button>
-            
-            <label for="fileInput" class="custom-file-upload">
-                Subir Archivo
-            </label>
-            <!-- Hidden input utilized by multiple buttons -->
+            <label for="fileInput" class="custom-file-upload">Subir Archivo</label>
             <input type="file" id="fileInput" accept=".txt,.zip" style="display: none;">
-            
             <div id="loading-progress-container">
                 <div id="progress-bar"><div id="progress-fill"></div></div>
-                <p id="progress-text" style="font-size: 0.8rem; color: var(--color-text-secondary);">Analizando...</p>
+                <p id="progress-text" style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight:600;">Analizando...</p>
             </div>
-            
-            <div style="margin-top: 24px;">
-                 <button class="icon-btn" onclick="toggleTheme()" title="Cambiar Tema"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+            <div style="margin-top: 20px;">
+                 <button class="icon-btn" onclick="toggleTheme()" title="Cambiar Tema" style="background:var(--color-bg); padding:10px;"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
             </div>
         </div>
     </div>
@@ -638,11 +672,9 @@
                 <span id="header-stats-preview">...</span>
             </div>
             <div class="header-buttons">
-                <!-- NEW: Add Conversation Button in Header -->
                 <button class="icon-btn" onclick="triggerFileUpload()" title="Agregar Chat" style="color: var(--color-secondary);">
                     <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                 </button>
-
                 <button class="icon-btn" onclick="openModal('chat-manager-modal')" title="Mis Chats">
                     <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
                 </button>
@@ -662,10 +694,10 @@
 
             <div id="dashboard-container">
                 <div style="padding-bottom: 20px;">
-                    <h3 style="margin-top:0; color:var(--color-primary); font-size:1.2rem;">Estadísticas</h3>
+                    <h3 style="margin-top:0; color:var(--color-primary); font-family:var(--font-family-main); font-size:1.1rem; font-weight: 700;">Estadísticas</h3>
                     
-                    <!-- 1. General Summary -->
-                    <details open>
+                    <!-- Solo Resumen General abierto por defecto -->
+                    <details open id="details-summary">
                         <summary>Resumen General</summary>
                         <div class="dashboard-content">
                             <div class="stat-card"><span>Total:</span> <strong id="stat-total">0</strong></div>
@@ -673,17 +705,16 @@
                             <div class="stat-card" style="color:#128c7e;"><span id="label-p2">P2:</span> <strong id="stat-p2">0</strong></div>
                         </div>
                     </details>
-
-                    <!-- 2. Distribution Pie -->
-                    <details>
+                    
+                    <!-- Los demas cerrados -->
+                    <details id="details-dist">
                         <summary>Distribución</summary>
                         <div class="dashboard-content">
                             <div class="chart-wrapper"><canvas id="chart-pie"></canvas></div>
                         </div>
                     </details>
-
-                    <!-- 3. Temporal Analysis -->
-                    <details>
+                    
+                    <details id="details-temp">
                         <summary>Tendencia de Mensajes</summary>
                         <div class="dashboard-content">
                             <div class="control-group">
@@ -697,8 +728,7 @@
                         </div>
                     </details>
                     
-                    <!-- 4. Advanced Search -->
-                    <details>
+                    <details id="details-search">
                         <summary>Búsqueda y Filtros</summary>
                         <div class="dashboard-content">
                             <div class="control-group">
@@ -706,7 +736,6 @@
                                 <button class="primary-btn" onclick="applyFilter()">Filtrar</button>
                             </div>
                             <button class="secondary-btn" onclick="resetFilter()" style="width:100%; margin-bottom:10px;">Reiniciar</button>
-                            
                             <div id="search-stats" style="display:none; margin-bottom:10px; font-size:0.85rem; color:var(--color-text-secondary);">
                                 <div>Total en filtro: <strong id="filter-total">0</strong></div>
                                 <div><span id="filter-label-p1"></span>: <strong id="filter-p1">0</strong></div>
@@ -717,8 +746,7 @@
                             </div>
                         </div>
                     </details>
-
-                    <!-- 5. Manual Analysis -->
+                    
                     <details id="manual-analysis-details">
                         <summary>Selección Manual</summary>
                         <div class="dashboard-content">
@@ -736,7 +764,6 @@
                         </div>
                     </details>
 
-                    <!-- SUBTLE Footer Action Buttons -->
                     <div class="footer-actions">
                         <div class="action-card-btn" onclick="shareAppAction()">
                             <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg>
@@ -755,7 +782,6 @@
                             <span>Descargar<br>PDF</span>
                         </div>
                     </div>
-
                 </div>
             </div>
         </main>
@@ -775,13 +801,13 @@
     <script>
         // --- Core State ---
         let currentMessages = [];
+        let mediaMap = {}; 
         let filteredMessages = [];
         let selectedIndices = new Set();
         let participants = [];
         let currentSlotId = null;
         let charts = { pie: null, temporal: null, search: null, manual: null };
-        const DB_NAME = 'WAAnalyzerV3';
-        // MAX_SLOTS removed as requested (unlimited)
+        const DB_NAME = 'WAAnalyzerV4_Media'; 
 
         // --- UI References ---
         const ui = {
@@ -807,6 +833,20 @@
             initTheme();
             handleSplashScreen();
             updateSlotsUI();
+            
+            // Accordion Exclusive Behavior Logic
+            const allDetails = document.querySelectorAll('details');
+            allDetails.forEach(det => {
+                det.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'SUMMARY' || e.target.closest('summary')) {
+                        allDetails.forEach(other => {
+                            if (other !== det) {
+                                other.removeAttribute('open');
+                            }
+                        });
+                    }
+                });
+            });
         });
 
         const fileInput = document.getElementById('fileInput');
@@ -814,7 +854,6 @@
 
         // --- File Processing ---
         function triggerFileUpload() {
-             // Close modal if open to show file picker
              closeModal('chat-manager-modal');
              fileInput.click();
         }
@@ -823,30 +862,40 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // Unlimited slots check removed here.
-
             ui.loadingContainer.style.display = 'block';
             try {
                 let text = "";
+                let extractedMedia = {};
+
                 if (file.name.endsWith('.zip')) {
-                    ui.progressText.innerText = "Descomprimiendo...";
+                    ui.progressText.innerText = "Analizando ZIP y Multimedia...";
                     const zip = await JSZip.loadAsync(file);
+                    
                     const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
                     if (!txtFile) throw new Error("No hay .txt en el ZIP");
                     text = await txtFile.async('string');
+
+                    const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
+                    for (const f of mediaFiles) {
+                        const blob = await f.async('blob');
+                        extractedMedia[f.name] = blob; 
+                    }
+
                 } else {
                     text = await file.text();
                 }
-                await parseMessagesAsync(text, file.name);
+                
+                await parseMessagesAsync(text, extractedMedia, file.name);
+
             } catch (err) {
                 alert("Error: " + err.message);
                 ui.loadingContainer.style.display = 'none';
             } finally {
-                e.target.value = ''; // Reset input
+                e.target.value = ''; 
             }
         }
 
-        async function parseMessagesAsync(text, filename) {
+        async function parseMessagesAsync(text, extractedMedia, filename) {
             const lines = text.split('\n');
             const totalLines = lines.length;
             const parsed = [];
@@ -870,13 +919,26 @@
                         if(ampm.toLowerCase().includes('a') && hr === 12) hr = 0;
                     }
 
+                    let attachment = null;
+                    const contentTrimmed = content.trim();
+                    
+                    if (extractedMedia) {
+                        for (const fileName of Object.keys(extractedMedia)) {
+                            if (contentTrimmed.includes(fileName)) {
+                                attachment = fileName;
+                                break; 
+                            }
+                        }
+                    }
+
                     currentMsg = {
                         id: parsed.length,
                         dateStr: date,
                         timeStr: time + (ampm || ''),
                         timestamp: new Date(fullYear, m-1, d, hr, min),
                         author: author.trim(),
-                        content: content.trim()
+                        content: contentTrimmed,
+                        attachment: attachment
                     };
                 } else if (currentMsg) {
                     currentMsg.content += '\n' + lines[i];
@@ -896,7 +958,8 @@
                 name: sortedAuthors.slice(0,2).join(' & '),
                 date: new Date().toLocaleDateString(),
                 msgs: parsed,
-                participants: sortedAuthors
+                participants: sortedAuthors,
+                media: extractedMedia 
             };
             
             await saveSlot(chatData);
@@ -914,6 +977,13 @@
             participants = chatData.participants;
             filteredMessages = [...currentMessages];
             selectedIndices.clear();
+            
+            mediaMap = {};
+            if (chatData.media) {
+                for (const [name, blob] of Object.entries(chatData.media)) {
+                    mediaMap[name] = URL.createObjectURL(blob);
+                }
+            }
 
             ui.uploadSection.style.display = 'none';
             ui.appContainer.style.display = 'flex';
@@ -926,6 +996,10 @@
         }
         
         function closeChat() {
+            for (const url of Object.values(mediaMap)) {
+                URL.revokeObjectURL(url);
+            }
+            mediaMap = {};
             currentMessages = [];
             currentSlotId = null;
             ui.appContainer.style.display = 'none';
@@ -944,7 +1018,6 @@
         function renderMessages(msgs = currentMessages) {
             ui.msgContainer.innerHTML = '';
             const fragment = document.createDocumentFragment();
-            // Optimization for large chats
             const renderSet = msgs.length > 3000 ? msgs.slice(-3000) : msgs;
 
             if(msgs.length > 3000) {
@@ -959,11 +1032,43 @@
                 div.className = `whatsapp-message ${isSender ? 'sender' : 'recipient'}`;
                 if(selectedIndices.has(msg.id)) div.classList.add('selected');
                 
-                div.onclick = () => toggleSelection(msg.id, div);
+                div.onclick = (e) => {
+                    if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO') return;
+                    toggleSelection(msg.id, div);
+                };
                 
+                let contentHtml = "";
+                
+                if (msg.attachment && mediaMap[msg.attachment]) {
+                    const url = mediaMap[msg.attachment];
+                    const ext = msg.attachment.split('.').pop().toLowerCase();
+                    
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                        const style = ext === 'webp' ? 'max-width: 150px;' : '';
+                        contentHtml += `<img src="${url}" class="msg-media" style="${style}" loading="lazy">`;
+                    } else if (['mp4', 'mov', 'mkv'].includes(ext)) {
+                        contentHtml += `<video src="${url}" class="msg-video" controls loading="lazy"></video>`;
+                    } else if (['mp3', 'opus', 'ogg', 'wav'].includes(ext)) {
+                        contentHtml += `<audio src="${url}" class="msg-audio" controls></audio>`;
+                    } else {
+                        contentHtml += `<div class="system-msg">📄 ${msg.attachment}</div>`;
+                    }
+                    
+                    const caption = msg.content.replace(msg.attachment, '').replace('(archivo adjunto)', '').trim();
+                    if(caption) contentHtml += `<div>${caption.replace(/\n/g, '<br>')}</div>`;
+                    
+                } else {
+                    const lower = msg.content.toLowerCase();
+                    if (lower.includes('eliminó este mensaje') || lower.includes('multimedia omitido') || lower.includes('configuración de mensajes temporales')) {
+                         contentHtml = `<div class="system-msg"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> ${msg.content}</div>`;
+                    } else {
+                        contentHtml = msg.content.replace(/\n/g, '<br>');
+                    }
+                }
+
                 div.innerHTML = `
                     <div class="msg-author">${msg.author}</div>
-                    ${msg.content.replace(/\n/g, '<br>')}
+                    ${contentHtml}
                     <div class="msg-meta"><span>${msg.dateStr} ${msg.timeStr}</span></div>
                 `;
                 fragment.appendChild(div);
@@ -973,7 +1078,6 @@
         }
 
         // --- Features ---
-
         function toggleSelection(id, divElement) {
             if (selectedIndices.has(id)) {
                 selectedIndices.delete(id);
@@ -1073,7 +1177,6 @@
         function updateTemporalChart() {
             const type = document.getElementById('timeframe-select').value;
             const ctx = document.getElementById('chart-temporal');
-            
             let labels = [], data = [];
             
             if (type === 'hour') {
@@ -1138,11 +1241,10 @@
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
-
             updateTemporalChart();
         }
 
-        // --- New Actions Logic ---
+        // --- Actions Logic ---
         function shareAppAction() {
             if(navigator.share) {
                 navigator.share({
@@ -1151,14 +1253,14 @@
                     url: window.location.href
                 });
             } else {
-                alert('Tu navegador no soporta la función de compartir nativa. Copia la URL manualmente.');
+                alert('Tu navegador no soporta la función de compartir nativa.');
             }
         }
 
         function sendBugEmail() {
             const description = document.getElementById('bug-description').value;
             const subject = encodeURIComponent("Reporte de Fallo - Analizador WA");
-            const body = encodeURIComponent(`Hola, encontré el siguiente fallo en la aplicación:\n\n${description}\n\nDispositivo: ${navigator.userAgent}`);
+            const body = encodeURIComponent(`Hola, encontré el siguiente fallo:\n\n${description}\n\nDispositivo: ${navigator.userAgent}`);
             window.location.href = `mailto:vivirapp2020@gmail.com?subject=${subject}&body=${body}`;
             closeModal('bug-report-modal');
         }
@@ -1166,25 +1268,19 @@
         async function getGeneratedDoc() {
              const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
-            // Build simple PDF
             doc.setFontSize(22);
-            doc.setTextColor(7, 94, 84); // WhatsApp Green
+            doc.setTextColor(7, 94, 84);
             doc.text("Reporte de WhatsApp", 105, 20, { align: "center" });
-            
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
             doc.text(`Conversación: ${participants.join(' & ')}`, 14, 40);
             doc.text(`Total Mensajes: ${currentMessages.length}`, 14, 50);
             doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 60);
-            
-            // Try to add the chart image if possible
             try {
                 const canvas = document.getElementById('chart-pie');
                 const imgData = canvas.toDataURL('image/png');
                 doc.addImage(imgData, 'PNG', 14, 70, 100, 100);
             } catch(e) { console.log("Chart image skipped"); }
-
             return doc;
         }
 
@@ -1208,12 +1304,10 @@
                 alert("Tu navegador no soporta compartir archivos directamente. Usa el botón 'Descargar'.");
                 return;
             }
-
             const doc = await getGeneratedDoc();
             const filename = getSmartFilename();
             const pdfBlob = doc.output('blob');
             const file = new File([pdfBlob], filename, { type: "application/pdf" });
-
             if (navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
@@ -1221,18 +1315,14 @@
                         title: 'Reporte de Chat',
                         text: 'Adjunto el reporte del análisis.'
                     });
-                } catch (err) {
-                    console.error("Error sharing", err);
-                }
-            } else {
-                alert("No se pudo compartir el archivo. Intenta descargarlo.");
+                } catch (err) { console.error(err); }
             }
         }
 
         // --- IndexedDB ---
         function getDB() {
             return new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, 2);
+                const req = indexedDB.open(DB_NAME, 3);
                 req.onupgradeneeded = e => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('slots')) {
@@ -1278,11 +1368,9 @@
             const slots = await getAllSlots();
             ui.slotsUsed.innerText = slots.length;
             ui.slotsContainer.innerHTML = '';
-
             if(slots.length === 0) {
                 ui.slotsContainer.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);font-size:0.85rem;padding:20px;">No tienes conversaciones guardadas.</p>';
             }
-
             slots.forEach(slot => {
                 const div = document.createElement('div');
                 div.className = 'slot-item';
@@ -1303,20 +1391,19 @@
         async function loadSlot(id) {
             const slots = await getAllSlots();
             const slot = slots.find(s => s.id === id);
-            if(slot) {
-                loadChat(slot);
-            }
+            if(slot) loadChat(slot);
         }
 
-        // --- Modals Generic ---
+        // --- Modals & UI ---
         function openModal(id) {
-            document.getElementById(id).style.display = 'flex';
+            const el = document.getElementById(id);
+            el.classList.add('show'); 
         }
         function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
+            const el = document.getElementById(id);
+            el.classList.remove('show');
         }
 
-        // --- UI Utilities ---
         window.switchMobileTab = (tab) => {
             const tabs = document.querySelectorAll('.nav-item');
             tabs.forEach(t => t.classList.remove('active'));
