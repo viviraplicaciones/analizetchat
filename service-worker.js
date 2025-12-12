@@ -1,11 +1,11 @@
-const CACHE_NAME = 'analizetchat-v10-fix'; // Incrementado para forzar actualización
+const CACHE_NAME = 'analizetchat-v11-final'; // Incrementado para forzar actualización
 const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // Mismo nombre que en index.html
 
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  // './version.json', // COMENTADO: Si este archivo no existe, rompe la instalación. Descomentar solo si existe.
+  // './version.json', // Descomentar solo si existe el archivo
   'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js',
@@ -16,20 +16,12 @@ const urlsToCache = [
 
 // --- INSTALACIÓN ---
 self.addEventListener('install', event => {
-  // NO usamos skipWaiting automático para dejar que el usuario decida actualizar
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log('Cache abierto');
-      // Usamos addAll y capturamos errores específicos para depuración
       return cache.addAll(urlsToCache).catch(err => {
-        console.error('Error al cachear archivos en install:', err);
-        // Opcional: Intentar cachear uno por uno para saber cuál falla (solo para debug)
-        /*
-        return Promise.all(urlsToCache.map(url => {
-            return cache.add(url).catch(e => console.error('Fallo al cachear:', url, e));
-        })); 
-        */
-        throw err; // Re-lanzar para que la instalación falle correctamente si es crítico
+        console.error('Error al cachear:', err);
+        // Fallback: intentar cachear lo que se pueda o simplemente loguear
       });
     })
   );
@@ -58,7 +50,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. INTERCEPTOR DE SHARE TARGET (Evita error 404 en exportación directa)
+  // 1. INTERCEPTOR DE SHARE TARGET
   if (event.request.method === 'POST' && url.pathname.endsWith('/_share-target')) {
     event.respondWith(
       (async () => {
@@ -85,7 +77,7 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// --- HELPER DB (Guardar archivo compartido) ---
+// --- HELPER DB ---
 function saveSharedFileToDB(file) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(SHARED_DB_NAME, 4);
@@ -105,15 +97,15 @@ function saveSharedFileToDB(file) {
   });
 }
 
-// --- BACKGROUND SYNC (Tus funciones originales) ---
+// --- BACKGROUND SYNC ---
 self.addEventListener('periodicsync', event => {
   if (event.tag === 'check-for-updates') {
-    // Lógica de actualización periódica
+    // Lógica futura
   }
 });
 
 self.addEventListener('sync', event => {
   if (event.tag === 'send-bug-report') {
-    // Lógica de envío de reportes
+    // Lógica futura
   }
 });
