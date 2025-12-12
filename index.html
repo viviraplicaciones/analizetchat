@@ -45,17 +45,17 @@
             --neon-glow: 0 0 10px rgba(18, 140, 126, 0.4);
             --gradient-primary: linear-gradient(135deg, #128c7e, #25d366);
             
-            /* Dimensions (Restored Compact Values) */
+            /* Dimensions */
             --header-height: 60px;
             --safe-area-top: env(safe-area-inset-top);
             --safe-area-bottom: env(safe-area-inset-bottom);
             --radius-md: 10px; 
             --shadow-subtle: 0 1px 3px rgba(0,0,0,0.1);
             
-            /* Typography - UNIFICADA A ROBOTO */
+            /* Typography */
             --font-family-main: 'Roboto', sans-serif;
             
-            /* Active Section Colors (Subtle backgrounds) */
+            /* Active Section Colors */
             --bg-active-summary: rgba(7, 94, 84, 0.04);
             --bg-active-dist: rgba(33, 150, 243, 0.04);
             --bg-active-temp: rgba(156, 39, 176, 0.04);
@@ -97,7 +97,7 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            font-family: var(--font-family-main); /* Cambio Global */
+            font-family: var(--font-family-main);
             background-color: var(--color-bg);
             color: var(--color-text-primary);
             overflow: hidden;
@@ -139,7 +139,7 @@
         #interlocutor-names {
             margin: 0;
             font-size: 1.1rem;
-            font-weight: 700; /* Roboto Bold */
+            font-weight: 700;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -462,17 +462,25 @@
             line-height: 1.1;
         }
 
-        /* --- Modals --- */
+        /* --- Modals (FIXED: Added .show state) --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
             backdrop-filter: blur(3px);
             z-index: 2000;
-            display: none;
+            display: none; /* Hidden by default */
             justify-content: center;
             align-items: center;
             padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* THIS WAS MISSING - RESTORED */
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
         }
         
         .modal-content {
@@ -486,6 +494,13 @@
             overflow-y: auto;
             text-align: center;
             border: 1px solid var(--color-border);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        /* THIS WAS MISSING - RESTORED */
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
         }
 
         .slot-item {
@@ -1260,7 +1275,7 @@
         function sendBugEmail() {
             const description = document.getElementById('bug-description').value;
             const subject = encodeURIComponent("Reporte de Fallo - Analizador WA");
-            const body = encodeURIComponent(`Hola, encontré el siguiente fallo:\n\n${description}\n\nDispositivo: ${navigator.userAgent}`);
+            const body = encodeURIComponent(`Hola, encontré el siguiente fallo en la aplicación:\n\n${description}\n\nDispositivo: ${navigator.userAgent}`);
             window.location.href = `mailto:vivirapp2020@gmail.com?subject=${subject}&body=${body}`;
             closeModal('bug-report-modal');
         }
