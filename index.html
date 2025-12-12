@@ -41,7 +41,7 @@
             --color-msg-in: #d9fdd3;
             --color-msg-out: #ffffff;
             
-            /* Neon & Modern Accents (Restored Subtle Glow) */
+            /* Neon & Modern Accents */
             --neon-glow: 0 0 10px rgba(18, 140, 126, 0.4);
             --gradient-primary: linear-gradient(135deg, #128c7e, #25d366);
             
@@ -462,14 +462,14 @@
             line-height: 1.1;
         }
 
-        /* --- Modals (FIXED: Added .show state) --- */
+        /* --- Modals (Fixed Visibility) --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
             backdrop-filter: blur(3px);
             z-index: 2000;
-            display: none; /* Hidden by default */
+            display: none; 
             justify-content: center;
             align-items: center;
             padding: 20px;
@@ -477,7 +477,6 @@
             transition: opacity 0.3s ease;
         }
         
-        /* THIS WAS MISSING - RESTORED */
         .modal-overlay.show {
             display: flex;
             opacity: 1;
@@ -498,7 +497,6 @@
             transition: transform 0.3s ease;
         }
         
-        /* THIS WAS MISSING - RESTORED */
         .modal-overlay.show .modal-content {
             transform: scale(1);
         }
@@ -875,30 +873,22 @@
                 ui.loadingContainer.style.display = 'block';
                 ui.progressText.innerText = "Recibiendo archivo compartido...";
                 
-                // Wait for Service Worker to be ready and have the file
-                // Simple delay or retry logic often needed, but let's try direct DB access
                 try {
-                    // Give SW a moment to write to DB
                     await new Promise(r => setTimeout(r, 500)); 
-                    
                     const db = await getDB();
                     const tx = db.transaction('shared_files', 'readonly');
                     const store = tx.objectStore('shared_files');
                     const req = store.get('latest');
-                    
                     req.onsuccess = async (e) => {
                         const file = e.target.result;
                         if (file) {
                             await processImportedFile(file);
-                            // Clean up URL
                             window.history.replaceState({}, document.title, window.location.pathname);
                         } else {
-                            console.log("No shared file found in DB");
                             ui.loadingContainer.style.display = 'none';
                         }
                     };
                 } catch (e) {
-                    console.error("Error reading shared file", e);
                     ui.loadingContainer.style.display = 'none';
                 }
             }
@@ -912,23 +902,18 @@
                 if (file.name.endsWith('.zip')) {
                     ui.progressText.innerText = "Analizando ZIP y Multimedia...";
                     const zip = await JSZip.loadAsync(file);
-                    
                     const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
                     if (!txtFile) throw new Error("No hay .txt en el ZIP");
                     text = await txtFile.async('string');
-
                     const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
                     for (const f of mediaFiles) {
                         const blob = await f.async('blob');
                         extractedMedia[f.name] = blob; 
                     }
-
                 } else {
                     text = await file.text();
                 }
-                
                 await parseMessagesAsync(text, extractedMedia, file.name);
-
             } catch (err) {
                 alert("Error: " + err.message);
                 ui.loadingContainer.style.display = 'none';
@@ -975,7 +960,6 @@
 
                     let attachment = null;
                     const contentTrimmed = content.trim();
-                    
                     if (extractedMedia) {
                         for (const fileName of Object.keys(extractedMedia)) {
                             if (contentTrimmed.includes(fileName)) {
@@ -1322,19 +1306,104 @@
         async function getGeneratedDoc() {
              const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+            let y = 20;
+
+            // Header
             doc.setFontSize(22);
             doc.setTextColor(7, 94, 84);
-            doc.text("Reporte de WhatsApp", 105, 20, { align: "center" });
+            doc.text("Reporte de WhatsApp", 105, y, { align: "center" });
+            y += 15;
+
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text(`Conversación: ${participants.join(' & ')}`, 14, 40);
-            doc.text(`Total Mensajes: ${currentMessages.length}`, 14, 50);
-            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 60);
+            doc.text(`Conversación: ${participants.join(' & ')}`, 14, y);
+            y += 8;
+            doc.text(`Total Mensajes: ${currentMessages.length}`, 14, y);
+            y += 8;
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, y);
+            y += 15;
+
+            // 1. General Stats (Always)
+            doc.setFontSize(14);
+            doc.setTextColor(7, 94, 84);
+            doc.text("Resumen General", 14, y);
+            y += 8;
+            doc.setFontSize(11);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`- ${participants[0]}: ${document.getElementById('stat-p1').innerText} mensajes`, 14, y);
+            y += 6;
+            doc.text(`- ${participants[1]}: ${document.getElementById('stat-p2').innerText} mensajes`, 14, y);
+            y += 15;
+
+            // 2. Distribution (Always)
+            doc.setFontSize(14);
+            doc.setTextColor(7, 94, 84);
+            doc.text("Distribución", 14, y);
+            y += 10;
             try {
                 const canvas = document.getElementById('chart-pie');
                 const imgData = canvas.toDataURL('image/png');
-                doc.addImage(imgData, 'PNG', 14, 70, 100, 100);
-            } catch(e) { console.log("Chart image skipped"); }
+                doc.addImage(imgData, 'PNG', 14, y, 100, 100);
+                y += 110;
+            } catch(e) {}
+
+            // Page Break Check
+            if (y > 250) { doc.addPage(); y = 20; }
+
+            // 3. Trends (Always)
+            doc.setFontSize(14);
+            doc.setTextColor(7, 94, 84);
+            doc.text("Tendencia de Mensajes", 14, y);
+            y += 10;
+            try {
+                const canvas = document.getElementById('chart-temporal');
+                const imgData = canvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', 14, y, 180, 80);
+                y += 90;
+            } catch(e) {}
+
+            // 4. Search Filter (Conditional)
+            const searchSection = document.getElementById('search-stats');
+            if (searchSection && searchSection.style.display !== 'none') {
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.setFontSize(14);
+                doc.setTextColor(7, 94, 84);
+                doc.text("Resultados de Búsqueda", 14, y);
+                y += 8;
+                doc.setFontSize(11);
+                doc.setTextColor(50, 50, 50);
+                const term = document.getElementById('search-input').value;
+                doc.text(`Término: "${term}"`, 14, y);
+                y += 6;
+                doc.text(`Total encontrados: ${document.getElementById('filter-total').innerText}`, 14, y);
+                y += 10;
+                try {
+                    const canvas = document.getElementById('chart-search');
+                    const imgData = canvas.toDataURL('image/png');
+                    doc.addImage(imgData, 'PNG', 14, y, 180, 80);
+                    y += 90;
+                } catch(e) {}
+            }
+
+            // 5. Manual Selection (Conditional)
+            const manualSection = document.getElementById('manual-stats');
+            if (manualSection && manualSection.style.display !== 'none') {
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.setFontSize(14);
+                doc.setTextColor(7, 94, 84);
+                doc.text("Selección Manual", 14, y);
+                y += 8;
+                doc.setFontSize(11);
+                doc.setTextColor(50, 50, 50);
+                doc.text(`Mensajes seleccionados: ${document.getElementById('manual-total').innerText}`, 14, y);
+                y += 10;
+                try {
+                    const canvas = document.getElementById('chart-manual');
+                    const imgData = canvas.toDataURL('image/png');
+                    doc.addImage(imgData, 'PNG', 14, y, 100, 100);
+                } catch(e) {}
+            }
+
             return doc;
         }
 
@@ -1376,7 +1445,7 @@
         // --- IndexedDB ---
         function getDB() {
             return new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, 4); // Increment version for new store
+                const req = indexedDB.open(DB_NAME, 4);
                 req.onupgradeneeded = e => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('slots')) {

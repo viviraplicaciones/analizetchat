@@ -1,11 +1,13 @@
 {
   "name": "Analizador de Chats de WhatsApp",
-  "short_name": "Analizador",
+  "short_name": "Analizador WA",
   "description": "Analiza y visualiza tus exportaciones de chats de WhatsApp.",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
+  "orientation": "portrait",
   "display_override": [
-    "window-controls-overlay"
+    "window-controls-overlay",
+    "standalone"
   ],
   "background_color": "#f0f2f5",
   "theme_color": "#075e54",

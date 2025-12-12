@@ -1,5 +1,5 @@
-const CACHE_NAME = 'analizetchat-v5'; // Incrementado para asegurar actualización
-const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // Nombre exacto usado en el index.html
+const CACHE_NAME = 'analizetchat-v8-final'; // Incrementado para forzar actualización
+const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // DB compartida con index.html
 
 const urlsToCache = [
   './',
@@ -7,11 +7,14 @@ const urlsToCache = [
   './manifest.json',
   './version.json',
   'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg',
-  'https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@200;300&display=swap',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+  'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
 ];
 
-// --- EVENTO INSTALL ---
+// --- INSTALACIÓN Y ACTIVACIÓN ---
 self.addEventListener('install', event => {
   self.skipWaiting(); // Forzar activación inmediata
   event.waitUntil(
@@ -66,10 +69,10 @@ self.addEventListener('fetch', event => {
         }
       })()
     );
-    return; // Detener aquí para no ejecutar caché
+    return; // Detener aquí para no ejecutar caché estándar
   }
 
-  // 2. LÓGICA DE CACHÉ HABITUAL (Tu código original)
+  // 2. LÓGICA DE CACHÉ HABITUAL
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -103,7 +106,7 @@ function saveSharedFileToDB(file) {
       const db = e.target.result;
       const tx = db.transaction('shared_files', 'readwrite');
       const store = tx.objectStore('shared_files');
-      // Guardar con clave fija 'latest'
+      // Guardar con clave fija 'latest' para recuperar en index.html
       store.put(file, 'latest');
       
       tx.oncomplete = () => {
@@ -120,8 +123,9 @@ function saveSharedFileToDB(file) {
   });
 }
 
-// --- SINCRONIZACIÓN EN SEGUNDO PLANO (TU CÓDIGO ORIGINAL) ---
+// --- TUS FUNCIONES DE FONDO ORIGINALES ---
 
+// 1. Sincronización Periódica para buscar actualizaciones
 self.addEventListener('periodicsync', event => {
   if (event.tag === 'check-for-updates') {
     event.waitUntil(checkForUpdates());
@@ -145,6 +149,7 @@ async function checkForUpdates() {
   }
 }
 
+// 2. Sincronización de Fondo para enviar informes de fallos
 self.addEventListener('sync', event => {
   if (event.tag === 'send-bug-report') {
     event.waitUntil(sendQueuedBugReports());
@@ -153,7 +158,7 @@ self.addEventListener('sync', event => {
 
 async function sendQueuedBugReports() {
     console.log('Conexión recuperada. Enviando informe de fallo...');
-    // Aquí iría el fetch real
+    // Lógica simulada de envío
     self.registration.showNotification('Informe de fallo enviado', {
       body: 'Gracias por tu ayuda. Hemos recibido tu informe correctamente.',
       icon: 'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg'
