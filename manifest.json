@@ -37,16 +37,15 @@
     }
   ],
   "share_target": {
-    "action": "./index.html",
+    "action": "/_share-target",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
       "title": "name",
-      "text": "description",
       "files": [
         {
-          "name": "chatfile",
-          "accept": ["text/plain", ".txt", ".zip"]
+          "name": "file",
+          "accept": [".txt", "text/plain", ".zip", "application/zip", "application/x-zip-compressed", "application/octet-stream"]
         }
       ]
     }

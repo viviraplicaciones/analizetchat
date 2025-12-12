@@ -848,6 +848,7 @@
             initTheme();
             handleSplashScreen();
             updateSlotsUI();
+            checkSharedFile(); // CHECK FOR SHARED FILE ON LOAD
             
             // Accordion Exclusive Behavior Logic
             const allDetails = document.querySelectorAll('details');
@@ -867,18 +868,44 @@
         const fileInput = document.getElementById('fileInput');
         fileInput.addEventListener('change', handleFileUpload);
 
-        // --- File Processing ---
-        function triggerFileUpload() {
-             closeModal('chat-manager-modal');
-             fileInput.click();
+        // --- SHARE TARGET LOGIC ---
+        async function checkSharedFile() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('action') === 'share') {
+                ui.loadingContainer.style.display = 'block';
+                ui.progressText.innerText = "Recibiendo archivo compartido...";
+                
+                // Wait for Service Worker to be ready and have the file
+                // Simple delay or retry logic often needed, but let's try direct DB access
+                try {
+                    // Give SW a moment to write to DB
+                    await new Promise(r => setTimeout(r, 500)); 
+                    
+                    const db = await getDB();
+                    const tx = db.transaction('shared_files', 'readonly');
+                    const store = tx.objectStore('shared_files');
+                    const req = store.get('latest');
+                    
+                    req.onsuccess = async (e) => {
+                        const file = e.target.result;
+                        if (file) {
+                            await processImportedFile(file);
+                            // Clean up URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        } else {
+                            console.log("No shared file found in DB");
+                            ui.loadingContainer.style.display = 'none';
+                        }
+                    };
+                } catch (e) {
+                    console.error("Error reading shared file", e);
+                    ui.loadingContainer.style.display = 'none';
+                }
+            }
         }
 
-        async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            ui.loadingContainer.style.display = 'block';
-            try {
+        async function processImportedFile(file) {
+             try {
                 let text = "";
                 let extractedMedia = {};
 
@@ -905,9 +932,21 @@
             } catch (err) {
                 alert("Error: " + err.message);
                 ui.loadingContainer.style.display = 'none';
-            } finally {
-                e.target.value = ''; 
             }
+        }
+
+        // --- File Processing ---
+        function triggerFileUpload() {
+             closeModal('chat-manager-modal');
+             fileInput.click();
+        }
+
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            ui.loadingContainer.style.display = 'block';
+            await processImportedFile(file);
+            e.target.value = ''; 
         }
 
         async function parseMessagesAsync(text, extractedMedia, filename) {
@@ -1337,11 +1376,14 @@
         // --- IndexedDB ---
         function getDB() {
             return new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, 3);
+                const req = indexedDB.open(DB_NAME, 4); // Increment version for new store
                 req.onupgradeneeded = e => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('slots')) {
                         db.createObjectStore('slots', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('shared_files')) {
+                        db.createObjectStore('shared_files');
                     }
                 };
                 req.onsuccess = e => resolve(e.target.result);
@@ -1454,6 +1496,15 @@
             }
             document.getElementById('no-splash').addEventListener('change', (e) => {
                 localStorage.setItem('hideSplash', e.target.checked);
+            });
+        }
+        
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('SW registrado'))
+                    .catch(err => console.log('SW error', err));
             });
         }
     </script>
