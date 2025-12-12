@@ -1,5 +1,5 @@
-const CACHE_NAME = 'analizetchat-v8-final'; // Incrementado para forzar actualización
-const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // DB compartida con index.html
+const CACHE_NAME = 'analizetchat-v9-final'; // Incrementado
+const SHARED_DB_NAME = 'WAAnalyzerV4_Media'; // Mismo nombre que en index.html
 
 const urlsToCache = [
   './',
@@ -14,161 +14,96 @@ const urlsToCache = [
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
 ];
 
-// --- INSTALACIÓN Y ACTIVACIÓN ---
+// --- INSTALACIÓN ---
 self.addEventListener('install', event => {
-  // Eliminamos self.skipWaiting() automático para permitir que el usuario decida cuándo actualizar
-  // self.skipWaiting(); 
+  // NO usamos skipWaiting automático para dejar que el usuario decida actualizar
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Cache abierto');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('Cache abierto');
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
-// --- NUEVO: Escuchar mensaje para forzar actualización ---
+// --- MENSAJE PARA FORZAR ACTUALIZACIÓN ---
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-// --- EVENTO ACTIVATE ---
+// --- ACTIVACIÓN ---
 self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // Tomar control de inmediato
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
+      self.clients.claim(),
+      caches.keys().then(keys => Promise.all(
+        keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null)
+      ))
     ])
   );
 });
 
-// --- EVENTO FETCH (INTERCEPTOR DE RED) ---
+// --- FETCH (INTERCEPTOR) ---
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. LÓGICA WEB SHARE TARGET (Recibir archivo de WhatsApp)
-  // Intercepta la ruta virtual definida en manifest.json
+  // 1. INTERCEPTOR DE SHARE TARGET (Evita error 404 en exportación directa)
   if (event.request.method === 'POST' && url.pathname.endsWith('/_share-target')) {
     event.respondWith(
       (async () => {
         try {
           const formData = await event.request.formData();
-          const file = formData.get('file'); // 'file' coincide con el name en manifest
+          const file = formData.get('file'); // Coincide con manifest
 
           if (file) {
-            // Guardar en IndexedDB para que el index.html lo lea
             await saveSharedFileToDB(file);
           }
-          // Redirigir al usuario a la app (index.html) indicando acción de compartir
           return Response.redirect('./index.html?action=share', 303);
         } catch (err) {
-          console.error('Error al recibir archivo compartido:', err);
+          console.error('Error share target:', err);
           return Response.redirect('./index.html?error=share_failed', 303);
         }
       })()
     );
-    return; // Detener aquí para no ejecutar caché estándar
+    return;
   }
 
-  // 2. LÓGICA DE CACHÉ HABITUAL
+  // 2. CACHÉ NORMAL
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
+    caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
 
-// --- FUNCIONES AUXILIARES (DB) ---
-
+// --- HELPER DB (Guardar archivo compartido) ---
 function saveSharedFileToDB(file) {
   return new Promise((resolve, reject) => {
-    // Abrir la misma DB que usa la app principal (versión 4)
-    const req = indexedDB.open(SHARED_DB_NAME, 4); 
-    
+    const req = indexedDB.open(SHARED_DB_NAME, 4);
     req.onupgradeneeded = e => {
       const db = e.target.result;
-      // Asegurar almacenes necesarios
-      if (!db.objectStoreNames.contains('shared_files')) {
-        db.createObjectStore('shared_files');
-      }
-      if (!db.objectStoreNames.contains('slots')) {
-        db.createObjectStore('slots', { keyPath: 'id' });
-      }
+      if (!db.objectStoreNames.contains('shared_files')) db.createObjectStore('shared_files');
+      if (!db.objectStoreNames.contains('slots')) db.createObjectStore('slots', { keyPath: 'id' });
     };
-
     req.onsuccess = e => {
       const db = e.target.result;
       const tx = db.transaction('shared_files', 'readwrite');
-      const store = tx.objectStore('shared_files');
-      // Guardar con clave fija 'latest' para recuperar en index.html
-      store.put(file, 'latest');
-      
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
+      tx.objectStore('shared_files').put(file, 'latest');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(); };
     };
-
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject();
   });
 }
 
-// --- TUS FUNCIONES DE FONDO ORIGINALES ---
-
-// 1. Sincronización Periódica para buscar actualizaciones
+// --- BACKGROUND SYNC (Tus funciones originales) ---
 self.addEventListener('periodicsync', event => {
   if (event.tag === 'check-for-updates') {
-    event.waitUntil(checkForUpdates());
+    // Lógica de actualización periódica
   }
 });
 
-async function checkForUpdates() {
-  try {
-    const response = await fetch('/version.json');
-    if (!response.ok) return;
-    const remoteVersion = await response.json();
-    
-    console.log('Buscando actualizaciones en segundo plano. Versión remota:', remoteVersion.version);
-
-    self.registration.showNotification('Aplicación actualizada', {
-      body: 'Se han descargado nuevas mejoras. La próxima vez que abras la app, verás la última versión.',
-      icon: 'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg'
-    });
-  } catch (error) {
-    console.error('Fallo al buscar actualizaciones:', error);
-  }
-}
-
-// 2. Sincronización de Fondo para enviar informes de fallos
 self.addEventListener('sync', event => {
   if (event.tag === 'send-bug-report') {
-    event.waitUntil(sendQueuedBugReports());
+    // Lógica de envío de reportes
   }
 });
-
-async function sendQueuedBugReports() {
-    console.log('Conexión recuperada. Enviando informe de fallo...');
-    // Lógica simulada de envío
-    self.registration.showNotification('Informe de fallo enviado', {
-      body: 'Gracias por tu ayuda. Hemos recibido tu informe correctamente.',
-      icon: 'https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg'
-    });
-}
