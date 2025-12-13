@@ -1,7 +1,5 @@
 /**
- * app.js
- * Lógica principal del Analizador de WhatsApp
- * Versión 4.0: PWA Bottom Sheet + Android BOM Fix + Regex Relaxed
+ * app.js - Versión 4.1: Robust Encoding Fix + Modal
  */
 
 let currentMessages = [];
@@ -41,6 +39,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSlotsUI();
     checkSharedFile();
     
+    // Fix Acordeones
     document.querySelectorAll('details').forEach(det => {
         det.addEventListener('click', function(e) {
             if (e.target.tagName === 'SUMMARY' || e.target.closest('summary')) {
@@ -57,15 +56,12 @@ fileInput.addEventListener('change', handleFileUpload);
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    // Mostrar el modal inferior
     ui.installModal.style.display = 'flex';
 });
 
-window.dismissInstall = function() {
-    ui.installModal.style.display = 'none';
-};
+window.dismissInstall = () => ui.installModal.style.display = 'none';
 
-window.installPWA = async function() {
+window.installPWA = async () => {
     if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
@@ -81,7 +77,8 @@ async function checkSharedFile() {
         ui.loadingContainer.style.display = 'block';
         ui.progressText.innerText = "Recuperando archivo...";
         try {
-            await new Promise(r => setTimeout(r, 500)); 
+            // Espera de seguridad para asegurar escritura en IDB
+            await new Promise(r => setTimeout(r, 800)); 
             const db = await getDB();
             const tx = db.transaction('shared_files', 'readonly');
             const req = tx.objectStore('shared_files').get('latest'); 
@@ -90,13 +87,19 @@ async function checkSharedFile() {
                 if (file) {
                     await processImportedFile(file);
                     window.history.replaceState({}, document.title, window.location.pathname);
-                } else ui.loadingContainer.style.display = 'none';
+                } else {
+                    console.warn("Archivo no encontrado en IDB.");
+                    ui.loadingContainer.style.display = 'none';
+                }
             };
-        } catch (e) { ui.loadingContainer.style.display = 'none'; }
+        } catch (e) { 
+            console.error("Error IDB:", e);
+            ui.loadingContainer.style.display = 'none'; 
+        }
     }
 }
 
-// --- SMART FILE PROCESSING (ANDROID FIX) ---
+// --- ROBUST FILE PROCESSING (FIX ENCODING) ---
 async function processImportedFile(file) {
      try {
         let text = "";
@@ -112,7 +115,7 @@ async function processImportedFile(file) {
             ui.progressText.innerText = "Descomprimiendo...";
             const zip = await JSZip.loadAsync(file);
             const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
-            if (!txtFile) throw new Error("El archivo no contiene historial de chat (.txt)");
+            if (!txtFile) throw new Error("No se encontró historial (.txt) en el archivo.");
             text = await txtFile.async('string');
             
             ui.progressText.innerText = "Procesando Multimedia...";
@@ -122,25 +125,31 @@ async function processImportedFile(file) {
                 extractedMedia[f.name.split('/').pop()] = blob; 
             }
         } else {
-            // FIX: Leer como ArrayBuffer y decodificar para evitar problemas de encoding
-            const buffer = await file.arrayBuffer();
-            const decoder = new TextDecoder('utf-8');
-            text = decoder.decode(buffer);
+            // FIX: Lectura robusta de texto
+            // Intentamos leer como UTF-8 primero
+            try {
+                text = await file.text();
+            } catch (e) {
+                console.warn("Fallo lectura directa, intentando FileReader...");
+                text = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsText(file);
+                });
+            }
         }
         
-        // FIX CRÍTICO: Eliminar BOM (Byte Order Mark) al inicio si existe
-        // Esto causa el error "chat vacío" en Android porque rompe el regex de la primera línea
-        if (text.charCodeAt(0) === 0xFEFF) {
-            text = text.slice(1);
-        }
-
-        if (!text || text.length < 10) throw new Error("El archivo parece vacío.");
+        // Limpieza de caracteres BOM (Byte Order Mark) que rompen el regex
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        
+        // Validación mínima
+        if (!text || text.length < 5) throw new Error("El archivo está vacío o dañado.");
 
         await parseMessagesAsync(text, extractedMedia, file.name);
         
     } catch (err) {
         console.error(err);
-        alert("Error al leer: " + err.message);
+        alert("Error al leer chat: " + err.message);
         ui.loadingContainer.style.display = 'none';
     }
 }
@@ -154,9 +163,10 @@ async function handleFileUpload(e) {
     e.target.value = ''; 
 }
 
+// --- WORKER CONNECTION ---
 function parseMessagesAsync(text, extractedMedia, filename) {
     return new Promise((resolve, reject) => {
-        ui.progressText.innerText = "Analizando chat...";
+        ui.progressText.innerText = "Analizando...";
         const worker = new Worker('parser.worker.js');
         const attachmentNames = extractedMedia ? Object.keys(extractedMedia) : [];
 
@@ -170,11 +180,12 @@ function parseMessagesAsync(text, extractedMedia, filename) {
                 const { data: parsed, analytics } = msg; 
                 worker.terminate();
                 if (parsed.length === 0) {
-                    reject(new Error("Formato de chat no reconocido."));
+                    // Si falla el regex, damos error específico
+                    reject(new Error("No se detectaron mensajes válidos. Verifica el formato."));
                     return;
                 }
                 try {
-                    ui.progressText.innerText = "Finalizando...";
+                    ui.progressText.innerText = "Guardando...";
                     parsed.forEach(m => m.timestamp = new Date(m.timestamp));
                     const authors = {};
                     parsed.forEach(m => authors[m.author] = (authors[m.author] || 0) + 1);
@@ -202,8 +213,7 @@ function parseMessagesAsync(text, extractedMedia, filename) {
     });
 }
 
-// ... (Resto de funciones: UI helpers, Charts, etc. se mantienen igual, solo copio las necesarias para que funcione el bloque completo)
-
+// --- UI HELPERS ---
 function formatTime(seconds) {
     if (!seconds) return 'N/A';
     if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -277,9 +287,8 @@ function loadChat(chatData) {
     }
 }
 
-// ... (Rest of UI Helpers: closeChat, updateHeader, renderMessages, toggleSelection, clearSelection, updateManualStats, applyFilter, resetFilter, updateTemporalChart, updateDashboard, shareAppAction, sendBugEmail, getGeneratedDoc, downloadReport, shareReport, DB functions, Modal helpers, switchMobileTab, toggleIncognito, toggleTheme, initTheme, handleSplashScreen, SW logic) ...
-// NOTE: I am abbreviating the rest of the functions because they are IDENTICAL to the previous version. Please copy the rest of the functions from the previous app.js code I provided or keep them if you are appending. 
-// FOR COMPLETENESS, I WILL PROVIDE THE REST OF THE FUNCTIONS BELOW TO COPY-PASTE SAFELY.
+// ... Resto de funciones estándar (Copia y pega las mismas funciones auxiliares de siempre: closeChat, updateHeader, renderMessages, etc.)
+// Para mantener el código completo, aquí están las funciones restantes minimizadas para ahorrar espacio pero funcionales:
 
 function closeChat() { for (const url of Object.values(mediaMap)) { URL.revokeObjectURL(url); } mediaMap = {}; currentMessages = []; currentSlotId = null; ui.appContainer.style.display = 'none'; ui.uploadSection.style.display = 'flex'; updateSlotsUI(); }
 function updateHeader() { const p1 = participants[0] || "?"; const p2 = participants[1] || "?"; const displayText = participants.length > 2 ? `${p1}, ${p2}...` : `${p1} y ${p2}`; document.getElementById('interlocutor-names').innerText = displayText; document.getElementById('header-stats-preview').innerText = `${currentMessages.length} mensajes`; }
@@ -343,7 +352,6 @@ async function getGeneratedDoc() {
     doc.setFontSize(22); doc.setTextColor(7, 94, 84); centerText("Reporte de Chat", y); y += 15;
     doc.setFontSize(12); doc.setTextColor(0, 0, 0); doc.text(`Conversación: ${participants.join(' & ')}`, 14, y); y += 7; doc.text(`Total Mensajes: ${currentMessages.length}`, 14, y); y += 7; doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, y); y += 15;
     doc.setFontSize(14); doc.setTextColor(7, 94, 84); doc.text("Resumen", 14, y); y += 8; doc.setFontSize(11); doc.setTextColor(50, 50, 50); doc.text(`• ${participants[0]}: ${document.getElementById('stat-p1').innerText}`, 20, y); y += 6; doc.text(`• ${participants[1]}: ${document.getElementById('stat-p2').innerText}`, 20, y); y += 15;
-    // Add charts
     const addChart = (canvasId, title) => { try { const canvas = document.getElementById(canvasId); if (canvas) { if (y > 230) { doc.addPage(); y = 20; } doc.setFontSize(14); doc.setTextColor(7, 94, 84); doc.text(title, 14, y); y += 10; const imgData = canvas.toDataURL('image/png'); doc.addImage(imgData, 'PNG', 14, y, 180, 90); y += 100; } } catch(e) {} };
     addChart('chart-pie', 'Distribución'); addChart('chart-temporal', 'Actividad');
     return doc;

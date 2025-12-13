@@ -40,7 +40,7 @@
       "files": [
         {
           "name": "file",
-          "accept": ["text/plain", "application/zip", "application/x-zip-compressed", "application/octet-stream"]
+          "accept": ["*/*", "text/plain", "application/zip", "application/x-zip-compressed", "application/octet-stream"]
         }
       ]
     }
