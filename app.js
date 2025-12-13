@@ -1,7 +1,7 @@
 /**
  * app.js
  * Lógica principal del Analizador de WhatsApp
- * Versión Refactorizada: Modular + Web Worker + PWA Persistence
+ * Versión 2.0: Modular + Web Worker + PWA Persistence + Analytics Avanzados
  */
 
 // --- Core State ---
@@ -11,7 +11,9 @@ let filteredMessages = [];
 let selectedIndices = new Set();
 let participants = [];
 let currentSlotId = null;
-let charts = { pie: null, temporal: null, search: null, manual: null };
+
+// Agregamos 'sentiment' al objeto charts
+let charts = { pie: null, temporal: null, search: null, manual: null, sentiment: null };
 const DB_NAME = 'WAAnalyzerV4_Media'; // Debe coincidir con service-worker.js
 
 // --- UI References ---
@@ -62,26 +64,23 @@ fileInput.addEventListener('change', handleFileUpload);
 async function checkSharedFile() {
     const params = new URLSearchParams(window.location.search);
     
-    // Si la URL tiene ?action=share, buscamos en IndexedDB
     if (params.get('action') === 'share') {
         ui.loadingContainer.style.display = 'block';
         ui.progressText.innerText = "Recuperando archivo compartido...";
         
         try {
-            // Damos un pequeño respiro para asegurar que el SW haya escrito el archivo
             await new Promise(r => setTimeout(r, 500)); 
             
             const db = await getDB();
             const tx = db.transaction('shared_files', 'readonly');
             const store = tx.objectStore('shared_files');
-            const req = store.get('latest'); // 'latest' es la clave que usamos en el SW
+            const req = store.get('latest'); 
             
             req.onsuccess = async (e) => {
                 const file = e.target.result;
                 if (file) {
                     console.log("Archivo recuperado de IDB:", file.name);
                     await processImportedFile(file);
-                    // Limpiar la URL para que no vuelva a procesar al recargar
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
                     console.warn("No se encontró archivo en 'shared_files'");
@@ -108,17 +107,14 @@ async function processImportedFile(file) {
             ui.progressText.innerText = "Descomprimiendo ZIP...";
             const zip = await JSZip.loadAsync(file);
             
-            // Buscar el archivo de texto principal (.txt)
             const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
             if (!txtFile) throw new Error("El archivo ZIP no contiene ningún .txt de chat.");
             
             text = await txtFile.async('string');
             
-            // Extraer multimedia (imágenes, audios, videos)
             ui.progressText.innerText = "Procesando Multimedia...";
             const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
             for (const f of mediaFiles) {
-                // Obtenemos el nombre base del archivo (sin rutas de carpetas si las hubiera)
                 const fileName = f.name.split('/').pop(); 
                 const blob = await f.async('blob');
                 extractedMedia[fileName] = blob; 
@@ -127,7 +123,6 @@ async function processImportedFile(file) {
             text = await file.text();
         }
         
-        // Enviamos al Web Worker
         await parseMessagesAsync(text, extractedMedia, file.name);
         
     } catch (err) {
@@ -147,7 +142,7 @@ async function handleFileUpload(e) {
     if (!file) return;
     ui.loadingContainer.style.display = 'block';
     await processImportedFile(file);
-    e.target.value = ''; // Reset input
+    e.target.value = ''; 
 }
 
 // --- ANÁLISIS CON WEB WORKER ---
@@ -155,29 +150,24 @@ function parseMessagesAsync(text, extractedMedia, filename) {
     return new Promise((resolve, reject) => {
         ui.progressText.innerText = "Iniciando análisis inteligente...";
         
-        // 1. Instanciar el Worker
         const worker = new Worker('parser.worker.js');
-        
-        // 2. Preparar lista de nombres de archivos (si hay multimedia)
         const attachmentNames = extractedMedia ? Object.keys(extractedMedia) : [];
 
-        // 3. Enviar datos al Worker
         worker.postMessage({
             text: text,
             attachmentNames: attachmentNames
         });
 
-        // 4. Escuchar respuestas del Worker
         worker.onmessage = async (e) => {
             const msg = e.data;
 
             if (msg.type === 'progress') {
-                // Actualizar barra de progreso
                 ui.progressBar.style.width = `${msg.percent}%`;
             } 
             else if (msg.type === 'complete') {
-                const parsed = msg.data;
-                worker.terminate(); // Liberar memoria del worker
+                // AQUÍ RECIBIMOS LOS NUEVOS DATOS (analytics)
+                const { data: parsed, analytics } = msg; 
+                worker.terminate();
 
                 if (parsed.length === 0) {
                     reject(new Error("Formato inválido o chat vacío."));
@@ -187,23 +177,21 @@ function parseMessagesAsync(text, extractedMedia, filename) {
                 try {
                     ui.progressText.innerText = "Guardando datos...";
                     
-                    // Reconstruir fechas (vienen como strings ISO)
                     parsed.forEach(m => m.timestamp = new Date(m.timestamp));
 
-                    // Calcular participantes
                     const authors = {};
                     parsed.forEach(m => authors[m.author] = (authors[m.author] || 0) + 1);
-                    // Ordenar autores por cantidad de mensajes para identificar los principales
                     const sortedAuthors = Object.keys(authors).sort((a,b) => authors[b] - authors[a]);
                     
                     const slotId = Date.now().toString();
                     const chatData = {
                         id: slotId,
-                        name: sortedAuthors.slice(0,2).join(' & '), // Usamos los 2 que más hablan como nombre del chat
+                        name: sortedAuthors.slice(0,2).join(' & '),
                         date: new Date().toLocaleDateString(),
                         msgs: parsed,
                         participants: sortedAuthors,
-                        media: extractedMedia // Guardamos los Blobs en IndexedDB
+                        media: extractedMedia,
+                        analytics: analytics // GUARDAMOS ANALYTICS V2.0
                     };
                     
                     await saveSlot(chatData);
@@ -227,12 +215,96 @@ function parseMessagesAsync(text, extractedMedia, filename) {
     });
 }
 
+// --- HELPER FUNCTIONS V2.0 ---
+
+function formatTime(seconds) {
+    if (!seconds) return 'N/A';
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const min = Math.floor(seconds / 60);
+    if (min < 60) return `${min} min`;
+    const hr = Math.floor(min / 60);
+    return `${hr}h ${min % 60}m`;
+}
+
+function updateAdvancedStats(analytics, participants) {
+    if (!analytics) return;
+
+    // 1. Emojis
+    const emojiContainer = document.getElementById('emojis-container');
+    emojiContainer.innerHTML = '';
+    
+    participants.forEach(p => {
+        if (analytics.topEmojis[p] && analytics.topEmojis[p].length > 0) {
+            const row = document.createElement('div');
+            row.className = 'emoji-row';
+            row.innerHTML = `<div style="font-size:0.8rem; font-weight:bold; width:30%; text-align:left; color:var(--color-secondary); overflow:hidden; text-overflow:ellipsis;">${p}</div>`;
+            
+            const emojisDiv = document.createElement('div');
+            emojisDiv.style.display = 'flex';
+            emojisDiv.style.gap = '8px';
+            emojisDiv.style.flex = '1';
+            emojisDiv.style.justifyContent = 'flex-end';
+            
+            analytics.topEmojis[p].forEach(item => {
+                emojisDiv.innerHTML += `
+                    <div class="emoji-item">
+                        <span>${item[0]}</span>
+                        <span class="emoji-count">${item[1]}</span>
+                    </div>
+                `;
+            });
+            row.appendChild(emojisDiv);
+            emojiContainer.appendChild(row);
+        }
+    });
+
+    // 2. Tiempo de Respuesta
+    const p1 = participants[0];
+    const p2 = participants[1];
+    if (analytics.avgResponseTime) {
+        // Obtenemos el tiempo, si no existe ponemos N/A
+        const t1 = analytics.avgResponseTime[p1] ? formatTime(analytics.avgResponseTime[p1]) : 'N/A';
+        const t2 = analytics.avgResponseTime[p2] ? formatTime(analytics.avgResponseTime[p2]) : 'N/A';
+        
+        document.getElementById('resp-time-p1').innerText = `${p1}: ${t1}`;
+        document.getElementById('resp-time-p2').innerText = `${p2}: ${t2}`;
+    }
+
+    // 3. Sentimiento (Gráfica de Barras)
+    const ctx = document.getElementById('chart-sentiment');
+    if (charts.sentiment) charts.sentiment.destroy();
+    
+    const s1 = analytics.sentimentScore ? (analytics.sentimentScore[p1] || 0) : 0;
+    const s2 = analytics.sentimentScore ? (analytics.sentimentScore[p2] || 0) : 0;
+
+    charts.sentiment = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [p1, p2],
+            datasets: [{
+                label: 'Positividad',
+                data: [s1, s2],
+                backgroundColor: [s1 >= 0 ? '#25d366' : '#e57373', s2 >= 0 ? '#25d366' : '#e57373']
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Barra horizontal
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
 // --- App Logic (UI) ---
+
+// Sobrescribimos loadChat para inyectar la lógica nueva
+const originalLoadChat = loadChat; // Placeholder para referencia circular si fuera necesario, pero redefiniremos completamente para claridad.
+
 function loadChat(chatData) {
     currentSlotId = chatData.id;
     currentMessages = chatData.msgs; 
     
-    // Asegurar que timestamps son objetos Date (al cargar de DB)
     if(currentMessages.length > 0 && typeof currentMessages[0].timestamp === 'string') {
         currentMessages.forEach(m => m.timestamp = new Date(m.timestamp));
     }
@@ -241,7 +313,6 @@ function loadChat(chatData) {
     filteredMessages = [...currentMessages];
     selectedIndices.clear();
     
-    // Generar URLs para multimedia
     mediaMap = {};
     if (chatData.media) {
         for (const [name, blob] of Object.entries(chatData.media)) {
@@ -249,7 +320,6 @@ function loadChat(chatData) {
         }
     }
 
-    // Cambiar vista
     ui.uploadSection.style.display = 'none';
     ui.appContainer.style.display = 'flex';
     ui.loadingContainer.style.display = 'none';
@@ -258,10 +328,19 @@ function loadChat(chatData) {
     updateHeader();
     renderMessages();
     updateDashboard();
+
+    // LÓGICA V2.0: Mostrar Analytics Avanzados
+    if (chatData.analytics) {
+        updateAdvancedStats(chatData.analytics, chatData.participants);
+        document.getElementById('details-emojis').style.display = 'block';
+        document.getElementById('details-advanced').style.display = 'block';
+    } else {
+        document.getElementById('details-emojis').style.display = 'none';
+        document.getElementById('details-advanced').style.display = 'none';
+    }
 }
 
 function closeChat() {
-    // Liberar memoria de URLs de blobs
     for (const url of Object.values(mediaMap)) {
         URL.revokeObjectURL(url);
     }
@@ -286,7 +365,6 @@ function renderMessages(msgs = currentMessages) {
     ui.msgContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
     
-    // Límite de seguridad para DOM
     const LIMIT = 3000;
     const renderSet = msgs.length > LIMIT ? msgs.slice(-LIMIT) : msgs;
 
@@ -303,7 +381,6 @@ function renderMessages(msgs = currentMessages) {
         if(selectedIndices.has(msg.id)) div.classList.add('selected');
         
         div.onclick = (e) => {
-            // Evitar seleccionar si se hace click en controles de video/audio
             if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO') return;
             toggleSelection(msg.id, div);
         };
@@ -325,13 +402,11 @@ function renderMessages(msgs = currentMessages) {
                 contentHtml += `<div class="system-msg">📄 ${msg.attachment}</div>`;
             }
             
-            // Si hay texto acompañando al archivo
             const caption = msg.content.replace(msg.attachment, '').replace('(archivo adjunto)', '').trim();
             if(caption) contentHtml += `<div>${caption.replace(/\n/g, '<br>')}</div>`;
             
         } else {
             const lower = msg.content.toLowerCase();
-            // Detectar mensajes de sistema comunes
             if (lower.includes('eliminó este mensaje') || lower.includes('multimedia omitido') || lower.includes('configuración de mensajes temporales')) {
                  contentHtml = `<div class="system-msg"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> ${msg.content}</div>`;
             } else {
@@ -517,7 +592,7 @@ function updateDashboard() {
     updateTemporalChart();
 }
 
-// --- Actions Logic (Compartir, Email, PDF) ---
+// --- Actions Logic ---
 function shareAppAction() {
     if(navigator.share) {
         navigator.share({
@@ -619,7 +694,6 @@ async function downloadReport() {
     }
 }
 
-// FUNCIÓN CORREGIDA: Manejo de errores de "Share"
 async function shareReport() {
     if (!navigator.canShare) {
         alert("Tu navegador no soporta compartir archivos directamente. Usa el botón 'Descargar'.");
@@ -642,7 +716,6 @@ async function shareReport() {
             throw new Error("El sistema no permite compartir este archivo.");
         }
     } catch (err) { 
-        // Si el usuario cancela (AbortError) no mostramos alerta molesta
         if (err.name !== 'AbortError') {
             console.error("Error al compartir:", err);
             alert("No se pudo compartir. Intenta descargando el PDF.");
@@ -750,6 +823,10 @@ window.switchMobileTab = (tab) => {
         ui.msgContainer.classList.add('hidden');
         document.getElementById('dashboard-container').classList.add('active');
     }
+};
+
+window.toggleIncognito = function() {
+    document.body.classList.toggle('incognito-mode');
 };
 
 window.toggleTheme = () => {

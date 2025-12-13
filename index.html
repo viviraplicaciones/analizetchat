@@ -109,6 +109,9 @@
                 <span id="header-stats-preview">...</span>
             </div>
             <div class="header-buttons">
+                <button class="icon-btn" onclick="toggleIncognito()" title="Modo Incógnito">
+                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                </button>
                 <button class="icon-btn" onclick="triggerFileUpload()" title="Agregar Chat" style="color: var(--color-secondary);">
                     <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                 </button>
@@ -138,6 +141,34 @@
                             <div class="stat-card"><span>Total:</span> <strong id="stat-total">0</strong></div>
                             <div class="stat-card" style="color:var(--color-sender-name);"><span id="label-p1">P1:</span> <strong id="stat-p1">0</strong></div>
                             <div class="stat-card" style="color:var(--color-recipient-name);"><span id="label-p2">P2:</span> <strong id="stat-p2">0</strong></div>
+                        </div>
+                    </details>
+
+                    <details id="details-emojis" style="display:none">
+                        <summary>Top Emojis</summary>
+                        <div class="dashboard-content">
+                            <div id="emojis-container" style="font-size: 1.5rem; text-align: center; padding: 10px;">
+                                </div>
+                        </div>
+                    </details>
+
+                    <details id="details-advanced" style="display:none">
+                        <summary>Análisis Avanzado</summary>
+                        <div class="dashboard-content">
+                            <div class="stat-card">
+                                <span>Tiempo Resp. Promedio:</span>
+                            </div>
+                            <div style="font-size: 0.85rem; margin-bottom: 10px; color: var(--color-text-secondary); display:flex; justify-content:space-between;">
+                                <strong id="resp-time-p1">...</strong>
+                                <strong id="resp-time-p2">...</strong>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <span>Sentimiento General:</span>
+                            </div>
+                             <div class="chart-wrapper" style="height: 150px;">
+                                <canvas id="chart-sentiment"></canvas>
+                            </div>
                         </div>
                     </details>
                     
