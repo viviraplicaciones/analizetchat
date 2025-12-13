@@ -4,11 +4,12 @@
   "description": "Analiza y visualiza tus exportaciones de chats de WhatsApp.",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
   "display_override": [
     "window-controls-overlay",
-    "standalone"
+    "standalone",
+    "fullscreen"
   ],
   "background_color": "#f0f2f5",
   "theme_color": "#075e54",
