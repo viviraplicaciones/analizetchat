@@ -84,7 +84,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // 1. Manejo de Share Target (Exportación desde WhatsApp)
-  if (event.request.method === 'POST' && url.pathname.includes('/_share-target')) {
+  if (event.request.method === 'POST' && url.pathname.includes('share-target-handler')) {
     event.respondWith(
       (async () => {
         try {

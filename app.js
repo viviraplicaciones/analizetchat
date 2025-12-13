@@ -1,3 +1,9 @@
+/**
+ * app.js
+ * Lógica principal del Analizador de WhatsApp
+ * Versión Refactorizada: Modular + Web Worker + PWA Persistence
+ */
+
 // --- Core State ---
 let currentMessages = [];
 let mediaMap = {}; 
@@ -6,7 +12,7 @@ let selectedIndices = new Set();
 let participants = [];
 let currentSlotId = null;
 let charts = { pie: null, temporal: null, search: null, manual: null };
-const DB_NAME = 'WAAnalyzerV4_Media'; 
+const DB_NAME = 'WAAnalyzerV4_Media'; // Debe coincidir con service-worker.js
 
 // --- UI References ---
 const ui = {
@@ -32,9 +38,9 @@ window.addEventListener('DOMContentLoaded', () => {
     initTheme();
     handleSplashScreen();
     updateSlotsUI();
-    checkSharedFile(); // CHECK FOR SHARED FILE ON LOAD
+    checkSharedFile(); // Verificar si se abrió la app compartiendo un archivo
     
-    // Accordion Exclusive Behavior Logic
+    // Lógica exclusiva para los "Acordeones" (Detalles) del Dashboard
     const allDetails = document.querySelectorAll('details');
     allDetails.forEach(det => {
         det.addEventListener('click', function(e) {
@@ -52,29 +58,42 @@ window.addEventListener('DOMContentLoaded', () => {
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', handleFileUpload);
 
-// --- SHARE TARGET LOGIC ---
+// --- SHARE TARGET LOGIC (Persistencia PWA) ---
 async function checkSharedFile() {
     const params = new URLSearchParams(window.location.search);
+    
+    // Si la URL tiene ?action=share, buscamos en IndexedDB
     if (params.get('action') === 'share') {
         ui.loadingContainer.style.display = 'block';
-        ui.progressText.innerText = "Recibiendo archivo compartido...";
+        ui.progressText.innerText = "Recuperando archivo compartido...";
         
         try {
+            // Damos un pequeño respiro para asegurar que el SW haya escrito el archivo
             await new Promise(r => setTimeout(r, 500)); 
+            
             const db = await getDB();
             const tx = db.transaction('shared_files', 'readonly');
             const store = tx.objectStore('shared_files');
-            const req = store.get('latest');
+            const req = store.get('latest'); // 'latest' es la clave que usamos en el SW
+            
             req.onsuccess = async (e) => {
                 const file = e.target.result;
                 if (file) {
+                    console.log("Archivo recuperado de IDB:", file.name);
                     await processImportedFile(file);
+                    // Limpiar la URL para que no vuelva a procesar al recargar
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
+                    console.warn("No se encontró archivo en 'shared_files'");
                     ui.loadingContainer.style.display = 'none';
                 }
             };
+            req.onerror = () => {
+                console.error("Error leyendo IDB shared_files");
+                ui.loadingContainer.style.display = 'none';
+            };
         } catch (e) {
+            console.error(e);
             ui.loadingContainer.style.display = 'none';
         }
     }
@@ -86,22 +105,33 @@ async function processImportedFile(file) {
         let extractedMedia = {};
 
         if (file.name.endsWith('.zip')) {
-            ui.progressText.innerText = "Analizando ZIP y Multimedia...";
+            ui.progressText.innerText = "Descomprimiendo ZIP...";
             const zip = await JSZip.loadAsync(file);
+            
+            // Buscar el archivo de texto principal (.txt)
             const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
-            if (!txtFile) throw new Error("No hay .txt en el ZIP");
+            if (!txtFile) throw new Error("El archivo ZIP no contiene ningún .txt de chat.");
+            
             text = await txtFile.async('string');
+            
+            // Extraer multimedia (imágenes, audios, videos)
+            ui.progressText.innerText = "Procesando Multimedia...";
             const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
             for (const f of mediaFiles) {
+                // Obtenemos el nombre base del archivo (sin rutas de carpetas si las hubiera)
+                const fileName = f.name.split('/').pop(); 
                 const blob = await f.async('blob');
-                extractedMedia[f.name] = blob; 
+                extractedMedia[fileName] = blob; 
             }
         } else {
             text = await file.text();
         }
+        
+        // Enviamos al Web Worker
         await parseMessagesAsync(text, extractedMedia, file.name);
+        
     } catch (err) {
-        alert("Error: " + err.message);
+        alert("Error al procesar archivo: " + err.message);
         ui.loadingContainer.style.display = 'none';
     }
 }
@@ -117,10 +147,10 @@ async function handleFileUpload(e) {
     if (!file) return;
     ui.loadingContainer.style.display = 'block';
     await processImportedFile(file);
-    e.target.value = ''; 
+    e.target.value = ''; // Reset input
 }
 
-// --- NUEVA FUNCIÓN CON WEB WORKER (Paso 2) ---
+// --- ANÁLISIS CON WEB WORKER ---
 function parseMessagesAsync(text, extractedMedia, filename) {
     return new Promise((resolve, reject) => {
         ui.progressText.innerText = "Iniciando análisis inteligente...";
@@ -147,30 +177,33 @@ function parseMessagesAsync(text, extractedMedia, filename) {
             } 
             else if (msg.type === 'complete') {
                 const parsed = msg.data;
-                worker.terminate(); // Liberar memoria
+                worker.terminate(); // Liberar memoria del worker
 
                 if (parsed.length === 0) {
-                    reject(new Error("Formato inválido o chat vacío"));
+                    reject(new Error("Formato inválido o chat vacío."));
                     return;
                 }
 
                 try {
+                    ui.progressText.innerText = "Guardando datos...";
+                    
                     // Reconstruir fechas (vienen como strings ISO)
                     parsed.forEach(m => m.timestamp = new Date(m.timestamp));
 
-                    // Lógica de Autores
+                    // Calcular participantes
                     const authors = {};
                     parsed.forEach(m => authors[m.author] = (authors[m.author] || 0) + 1);
+                    // Ordenar autores por cantidad de mensajes para identificar los principales
                     const sortedAuthors = Object.keys(authors).sort((a,b) => authors[b] - authors[a]);
                     
                     const slotId = Date.now().toString();
                     const chatData = {
                         id: slotId,
-                        name: sortedAuthors.slice(0,2).join(' & '),
+                        name: sortedAuthors.slice(0,2).join(' & '), // Usamos los 2 que más hablan como nombre del chat
                         date: new Date().toLocaleDateString(),
                         msgs: parsed,
                         participants: sortedAuthors,
-                        media: extractedMedia // Vinculamos los Blobs reales aquí
+                        media: extractedMedia // Guardamos los Blobs en IndexedDB
                     };
                     
                     await saveSlot(chatData);
@@ -194,11 +227,13 @@ function parseMessagesAsync(text, extractedMedia, filename) {
     });
 }
 
-// --- App Logic ---
+// --- App Logic (UI) ---
 function loadChat(chatData) {
     currentSlotId = chatData.id;
     currentMessages = chatData.msgs; 
-    if(typeof currentMessages[0].timestamp === 'string') {
+    
+    // Asegurar que timestamps son objetos Date (al cargar de DB)
+    if(currentMessages.length > 0 && typeof currentMessages[0].timestamp === 'string') {
         currentMessages.forEach(m => m.timestamp = new Date(m.timestamp));
     }
 
@@ -206,6 +241,7 @@ function loadChat(chatData) {
     filteredMessages = [...currentMessages];
     selectedIndices.clear();
     
+    // Generar URLs para multimedia
     mediaMap = {};
     if (chatData.media) {
         for (const [name, blob] of Object.entries(chatData.media)) {
@@ -213,6 +249,7 @@ function loadChat(chatData) {
         }
     }
 
+    // Cambiar vista
     ui.uploadSection.style.display = 'none';
     ui.appContainer.style.display = 'flex';
     ui.loadingContainer.style.display = 'none';
@@ -224,12 +261,14 @@ function loadChat(chatData) {
 }
 
 function closeChat() {
+    // Liberar memoria de URLs de blobs
     for (const url of Object.values(mediaMap)) {
         URL.revokeObjectURL(url);
     }
     mediaMap = {};
     currentMessages = [];
     currentSlotId = null;
+    
     ui.appContainer.style.display = 'none';
     ui.uploadSection.style.display = 'flex';
     updateSlotsUI();
@@ -246,11 +285,14 @@ function updateHeader() {
 function renderMessages(msgs = currentMessages) {
     ui.msgContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
-    const renderSet = msgs.length > 3000 ? msgs.slice(-3000) : msgs;
+    
+    // Límite de seguridad para DOM
+    const LIMIT = 3000;
+    const renderSet = msgs.length > LIMIT ? msgs.slice(-LIMIT) : msgs;
 
-    if(msgs.length > 3000) {
+    if(msgs.length > LIMIT) {
          const warning = document.createElement('div');
-         warning.innerHTML = "<small style='display:block;text-align:center;padding:10px;color:#888'>Mostrando los últimos 3000 mensajes</small>";
+         warning.innerHTML = "<small style='display:block;text-align:center;padding:10px;color:#888'>Mostrando los últimos 3000 mensajes por rendimiento</small>";
          fragment.appendChild(warning);
     }
 
@@ -261,6 +303,7 @@ function renderMessages(msgs = currentMessages) {
         if(selectedIndices.has(msg.id)) div.classList.add('selected');
         
         div.onclick = (e) => {
+            // Evitar seleccionar si se hace click en controles de video/audio
             if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO') return;
             toggleSelection(msg.id, div);
         };
@@ -276,17 +319,19 @@ function renderMessages(msgs = currentMessages) {
                 contentHtml += `<img src="${url}" class="msg-media" style="${style}" loading="lazy">`;
             } else if (['mp4', 'mov', 'mkv'].includes(ext)) {
                 contentHtml += `<video src="${url}" class="msg-video" controls loading="lazy"></video>`;
-            } else if (['mp3', 'opus', 'ogg', 'wav'].includes(ext)) {
+            } else if (['mp3', 'opus', 'ogg', 'wav', 'm4a'].includes(ext)) {
                 contentHtml += `<audio src="${url}" class="msg-audio" controls></audio>`;
             } else {
                 contentHtml += `<div class="system-msg">📄 ${msg.attachment}</div>`;
             }
             
+            // Si hay texto acompañando al archivo
             const caption = msg.content.replace(msg.attachment, '').replace('(archivo adjunto)', '').trim();
             if(caption) contentHtml += `<div>${caption.replace(/\n/g, '<br>')}</div>`;
             
         } else {
             const lower = msg.content.toLowerCase();
+            // Detectar mensajes de sistema comunes
             if (lower.includes('eliminó este mensaje') || lower.includes('multimedia omitido') || lower.includes('configuración de mensajes temporales')) {
                  contentHtml = `<div class="system-msg"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> ${msg.content}</div>`;
             } else {
@@ -305,7 +350,7 @@ function renderMessages(msgs = currentMessages) {
     ui.msgContainer.scrollTop = ui.msgContainer.scrollHeight;
 }
 
-// --- Features ---
+// --- Features & Stats ---
 function toggleSelection(id, divElement) {
     if (selectedIndices.has(id)) {
         selectedIndices.delete(id);
@@ -472,7 +517,7 @@ function updateDashboard() {
     updateTemporalChart();
 }
 
-// --- Actions Logic ---
+// --- Actions Logic (Compartir, Email, PDF) ---
 function shareAppAction() {
     if(navigator.share) {
         navigator.share({
@@ -494,7 +539,7 @@ function sendBugEmail() {
 }
 
 async function getGeneratedDoc() {
-     const { jsPDF } = window.jspdf;
+    const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 20;
 
@@ -513,7 +558,7 @@ async function getGeneratedDoc() {
     doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, y);
     y += 15;
 
-    // 1. General Stats (Always)
+    // 1. General Stats
     doc.setFontSize(14);
     doc.setTextColor(7, 94, 84);
     doc.text("Resumen General", 14, y);
@@ -525,7 +570,7 @@ async function getGeneratedDoc() {
     doc.text(`- ${participants[1]}: ${document.getElementById('stat-p2').innerText} mensajes`, 14, y);
     y += 15;
 
-    // 2. Distribution (Always)
+    // 2. Distribution
     doc.setFontSize(14);
     doc.setTextColor(7, 94, 84);
     doc.text("Distribución", 14, y);
@@ -537,10 +582,10 @@ async function getGeneratedDoc() {
         y += 110;
     } catch(e) {}
 
-    // Page Break Check
+    // Check Page Break
     if (y > 250) { doc.addPage(); y = 20; }
 
-    // 3. Trends (Always)
+    // 3. Trends
     doc.setFontSize(14);
     doc.setTextColor(7, 94, 84);
     doc.text("Tendencia de Mensajes", 14, y);
@@ -551,48 +596,6 @@ async function getGeneratedDoc() {
         doc.addImage(imgData, 'PNG', 14, y, 180, 80);
         y += 90;
     } catch(e) {}
-
-    // 4. Search Filter (Conditional)
-    const searchSection = document.getElementById('search-stats');
-    if (searchSection && searchSection.style.display !== 'none') {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(7, 94, 84);
-        doc.text("Resultados de Búsqueda", 14, y);
-        y += 8;
-        doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
-        const term = document.getElementById('search-input').value;
-        doc.text(`Término: "${term}"`, 14, y);
-        y += 6;
-        doc.text(`Total encontrados: ${document.getElementById('filter-total').innerText}`, 14, y);
-        y += 10;
-        try {
-            const canvas = document.getElementById('chart-search');
-            const imgData = canvas.toDataURL('image/png');
-            doc.addImage(imgData, 'PNG', 14, y, 180, 80);
-            y += 90;
-        } catch(e) {}
-    }
-
-    // 5. Manual Selection (Conditional)
-    const manualSection = document.getElementById('manual-stats');
-    if (manualSection && manualSection.style.display !== 'none') {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(7, 94, 84);
-        doc.text("Selección Manual", 14, y);
-        y += 8;
-        doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
-        doc.text(`Mensajes seleccionados: ${document.getElementById('manual-total').innerText}`, 14, y);
-        y += 10;
-        try {
-            const canvas = document.getElementById('chart-manual');
-            const imgData = canvas.toDataURL('image/png');
-            doc.addImage(imgData, 'PNG', 14, y, 100, 100);
-        } catch(e) {}
-    }
 
     return doc;
 }
@@ -608,27 +611,42 @@ function getSmartFilename() {
 }
 
 async function downloadReport() {
-    const doc = await getGeneratedDoc();
-    doc.save(getSmartFilename());
+    try {
+        const doc = await getGeneratedDoc();
+        doc.save(getSmartFilename());
+    } catch(e) {
+        alert("Error generando PDF: " + e.message);
+    }
 }
 
+// FUNCIÓN CORREGIDA: Manejo de errores de "Share"
 async function shareReport() {
     if (!navigator.canShare) {
         alert("Tu navegador no soporta compartir archivos directamente. Usa el botón 'Descargar'.");
         return;
     }
-    const doc = await getGeneratedDoc();
-    const filename = getSmartFilename();
-    const pdfBlob = doc.output('blob');
-    const file = new File([pdfBlob], filename, { type: "application/pdf" });
-    if (navigator.canShare({ files: [file] })) {
-        try {
+    
+    try {
+        const doc = await getGeneratedDoc();
+        const filename = getSmartFilename();
+        const pdfBlob = doc.output('blob');
+        const file = new File([pdfBlob], filename, { type: "application/pdf" });
+
+        if (navigator.canShare({ files: [file] })) {
             await navigator.share({
                 files: [file],
                 title: 'Reporte de Chat',
                 text: 'Adjunto el reporte del análisis.'
             });
-        } catch (err) { console.error(err); }
+        } else {
+            throw new Error("El sistema no permite compartir este archivo.");
+        }
+    } catch (err) { 
+        // Si el usuario cancela (AbortError) no mostramos alerta molesta
+        if (err.name !== 'AbortError') {
+            console.error("Error al compartir:", err);
+            alert("No se pudo compartir. Intenta descargando el PDF.");
+        }
     }
 }
 
@@ -710,7 +728,7 @@ async function loadSlot(id) {
     if(slot) loadChat(slot);
 }
 
-// --- Modals & UI ---
+// --- Modals & UI helpers ---
 function openModal(id) {
     const el = document.getElementById(id);
     el.classList.add('show'); 
@@ -758,7 +776,7 @@ function handleSplashScreen() {
     });
 }
 
-// Service Worker Registration & Update Logic
+// --- Service Worker Logic ---
 let newWorker;
 
 function showUpdateToast(worker) {

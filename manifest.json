@@ -3,6 +3,7 @@
   "short_name": "Analizador WA",
   "description": "Analiza y visualiza tus exportaciones de chats de WhatsApp.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait",
   "display_override": [
@@ -29,17 +30,8 @@
       "purpose": "any maskable"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Analizar Nuevo Chat",
-      "short_name": "Nuevo Chat",
-      "description": "Abre el selector de archivos para analizar una nueva conversación.",
-      "url": "./index.html?action=new-chat",
-      "icons": [{ "src": "https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.jpeg", "sizes": "96x96" }]
-    }
-  ],
   "share_target": {
-    "action": "/_share-target",
+    "action": "./share-target-handler/",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
