@@ -19,7 +19,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -38,32 +37,41 @@
         </div>
     </div>
 
+    <div id="install-modal" class="install-sheet">
+        <div class="install-content">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
+                <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" width="50" style="border-radius:10px;">
+                <div style="text-align:left;">
+                    <h3 style="margin:0; font-size:1rem; color:var(--color-text-primary);">Instalar App</h3>
+                    <p style="margin:2px 0 0 0; font-size:0.8rem; color:var(--color-text-secondary);">Mejor rendimiento y pantalla completa.</p>
+                </div>
+            </div>
+            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom:15px; text-align:left; line-height:1.4;">
+                Instala el Analizador para procesar tus chats mucho más rápido, sin conexión a internet y en modo inmersivo.
+            </p>
+            <div style="display:flex; gap:10px;">
+                <button class="secondary-btn" onclick="dismissInstall()" style="flex:1;">Ahora no</button>
+                <button class="primary-btn" onclick="installPWA()" style="flex:1;">Instalar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="chat-manager-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--color-primary); font-family:var(--font-family-main);">Mis Conversaciones</h3>
             <p style="font-size:0.8rem; color:var(--color-text-secondary); margin-bottom: 15px;">
                 Espacios usados: <strong id="slots-used" style="color: var(--color-secondary);">0</strong>
             </p>
-            <div id="slots-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
-                </div>
-            
-            <button class="primary-btn" onclick="triggerFileUpload()" style="width:100%; margin-bottom: 8px;">
-                + Agregar Nuevo Chat
-            </button>
+            <div id="slots-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
+            <button class="primary-btn" onclick="triggerFileUpload()" style="width:100%; margin-bottom: 8px;">+ Agregar Nuevo Chat</button>
             <button class="secondary-btn" style="width:100%;" onclick="closeModal('chat-manager-modal')">Cerrar</button>
         </div>
     </div>
 
     <div id="bug-report-modal" class="modal-overlay">
         <div class="modal-content">
-            <div style="background-color: rgba(255, 193, 7, 0.15); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="#ffc107"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-            </div>
             <h3 style="margin-top:0; color:var(--color-text-primary);">Reportar un Fallo</h3>
-            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom: 15px;">
-                Describe el problema que encontraste:
-            </p>
-            <textarea id="bug-description" rows="4" placeholder="Ej: La gráfica no carga..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
+            <textarea id="bug-description" rows="4" placeholder="Describe el problema..." style="width: 100%; resize: vertical; margin-bottom: 15px;"></textarea>
             <button class="primary-btn" style="width:100%; margin-bottom: 8px;" onclick="sendBugEmail()">Enviar Correo</button>
             <button class="secondary-btn" style="width:100%;" onclick="closeModal('bug-report-modal')">Cancelar</button>
         </div>
@@ -72,7 +80,7 @@
     <div id="update-toast">
         <div>
             <p style="font-weight:bold; margin-bottom:4px;">Actualización disponible</p>
-            <p>Hay una nueva versión de la app. ¿Actualizar ahora?</p>
+            <p>Hay una nueva versión. ¿Actualizar?</p>
         </div>
         <div style="display:flex; gap:8px;">
             <button id="btn-update-cancel" onclick="dismissUpdate()">No</button>
@@ -84,12 +92,8 @@
         <div class="upload-card">
             <img src="https://raw.githubusercontent.com/viviraplicaciones/analizetchat/refs/heads/main/logo.png" width="60" style="border-radius:12px; margin-bottom:15px;">
             <h1 style="margin:0 0 5px 0; color:var(--color-text-primary); font-family:var(--font-family-main); font-size:1.5rem; font-weight: 700;">Analizador de Chats</h1>
-            <p style="color:var(--color-text-secondary); margin-bottom:20px; font-size:0.9rem;">
-                Sube tu archivo .txt o .zip.<br>Soporte Multimedia 100% Local.
-            </p>
-            <button class="secondary-btn" onclick="openModal('chat-manager-modal')" style="margin-bottom: 10px; width: 100%; border: 1px solid var(--color-border); background: rgba(0,0,0,0.02);">
-                📂 Ver Mis Conversaciones
-            </button>
+            <p style="color:var(--color-text-secondary); margin-bottom:20px; font-size:0.9rem;">Sube tu archivo .txt o .zip.<br>Soporte Multimedia 100% Local.</p>
+            <button class="secondary-btn" onclick="openModal('chat-manager-modal')" style="margin-bottom: 10px; width: 100%; border: 1px solid var(--color-border); background: rgba(0,0,0,0.02);">📂 Ver Mis Conversaciones</button>
             <label for="fileInput" class="custom-file-upload">Subir Archivo</label>
             <input type="file" id="fileInput" accept=".txt,.zip" style="display: none;">
             <div id="loading-progress-container">
@@ -109,32 +113,16 @@
                 <span id="header-stats-preview">...</span>
             </div>
             <div class="header-buttons">
-                <button id="btn-install" class="icon-btn" style="display:none; color: var(--color-secondary);" title="Instalar App">
-                    <svg viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 11l5 5 5-5M12 4v12"/></svg>
-                </button>
-                
-                <button class="icon-btn" onclick="toggleIncognito()" title="Modo Incógnito">
-                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                </button>
-                <button class="icon-btn" onclick="triggerFileUpload()" title="Agregar Chat" style="color: var(--color-secondary);">
-                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                </button>
-                <button class="icon-btn" onclick="openModal('chat-manager-modal')" title="Mis Chats">
-                    <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
-                </button>
-                <button class="icon-btn" onclick="closeChat()" title="Salir">
-                     <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
-                </button>
-                <button class="icon-btn" onclick="toggleTheme()" title="Tema">
-                    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
-                </button>
+                <button class="icon-btn" onclick="toggleIncognito()" title="Modo Incógnito"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></button>
+                <button class="icon-btn" onclick="triggerFileUpload()" title="Agregar Chat" style="color: var(--color-secondary);"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
+                <button class="icon-btn" onclick="openModal('chat-manager-modal')" title="Mis Chats"><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg></button>
+                <button class="icon-btn" onclick="closeChat()" title="Salir"><svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg></button>
+                <button class="icon-btn" onclick="toggleTheme()" title="Tema"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.31 0-6-2.69-6-6 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
             </div>
         </header>
 
         <main id="main-content">
-            <div id="messages-container" class="active">
-                </div>
-
+            <div id="messages-container" class="active"></div>
             <div id="dashboard-container">
                 <div style="padding-bottom: 20px;">
                     <h3 style="margin-top:0; color:var(--color-primary); font-family:var(--font-family-main); font-size:1.1rem; font-weight: 700;">Estadísticas</h3>
@@ -150,36 +138,24 @@
 
                     <details id="details-emojis" style="display:none">
                         <summary>Top Emojis</summary>
-                        <div class="dashboard-content">
-                            <div id="emojis-container" style="font-size: 1.5rem; text-align: center; padding: 10px;">
-                            </div>
-                        </div>
+                        <div class="dashboard-content"><div id="emojis-container" style="font-size: 1.5rem; text-align: center; padding: 10px;"></div></div>
                     </details>
 
                     <details id="details-advanced" style="display:none">
                         <summary>Análisis Avanzado</summary>
                         <div class="dashboard-content">
-                            <div class="stat-card">
-                                <span>Tiempo Resp. Promedio:</span>
-                            </div>
+                            <div class="stat-card"><span>Tiempo Resp. Promedio:</span></div>
                             <div style="font-size: 0.85rem; margin-bottom: 15px; color: var(--color-text-secondary); display:flex; justify-content:space-between;">
-                                <strong id="resp-time-p1">...</strong>
-                                <strong id="resp-time-p2">...</strong>
+                                <strong id="resp-time-p1">...</strong><strong id="resp-time-p2">...</strong>
                             </div>
-                            
-                            <div class="stat-card">
-                                <span>Sentimiento General:</span>
-                            </div>
-                            <div id="sentiment-visual-container">
-                                </div>
+                            <div class="stat-card"><span>Sentimiento General:</span></div>
+                            <div id="sentiment-visual-container"></div>
                         </div>
                     </details>
                     
                     <details id="details-dist">
                         <summary>Distribución</summary>
-                        <div class="dashboard-content">
-                            <div class="chart-wrapper"><canvas id="chart-pie"></canvas></div>
-                        </div>
+                        <div class="dashboard-content"><div class="chart-wrapper"><canvas id="chart-pie"></canvas></div></div>
                     </details>
                     
                     <details id="details-temp">
@@ -209,60 +185,36 @@
                                 <div><span id="filter-label-p1"></span>: <strong id="filter-p1">0</strong></div>
                                 <div><span id="filter-label-p2"></span>: <strong id="filter-p2">0</strong></div>
                             </div>
-                            <div class="chart-wrapper" id="search-chart-wrapper" style="display:none;">
-                                <canvas id="chart-search"></canvas>
-                            </div>
+                            <div class="chart-wrapper" id="search-chart-wrapper" style="display:none;"><canvas id="chart-search"></canvas></div>
                         </div>
                     </details>
                     
                     <details id="manual-analysis-details">
                         <summary>Selección Manual</summary>
                         <div class="dashboard-content">
-                            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-top:0;">
-                                Toca los mensajes del chat para analizarlos aquí.
-                            </p>
+                            <p style="font-size:0.85rem; color:var(--color-text-secondary); margin-top:0;">Toca los mensajes del chat para analizarlos aquí.</p>
                             <div id="manual-stats" style="display:none;">
                                 <div class="stat-card"><span>Seleccionados:</span> <strong id="manual-total">0</strong></div>
                                 <div class="chart-wrapper"><canvas id="chart-manual"></canvas></div>
                                 <button class="secondary-btn" onclick="clearSelection()" style="width:100%; margin-top:10px;">Limpiar Selección</button>
                             </div>
-                            <div id="manual-placeholder" style="text-align:center; padding:20px; color:var(--color-text-secondary); opacity: 0.6;">
-                                Ningún mensaje seleccionado
-                            </div>
+                            <div id="manual-placeholder" style="text-align:center; padding:20px; color:var(--color-text-secondary); opacity: 0.6;">Ningún mensaje seleccionado</div>
                         </div>
                     </details>
 
                     <div class="footer-actions">
-                        <div class="action-card-btn" onclick="shareAppAction()">
-                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg>
-                            <span>Compartir<br>App</span>
-                        </div>
-                        <div class="action-card-btn" onclick="openModal('bug-report-modal')">
-                            <svg viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg>
-                            <span>Reportar<br>Fallo</span>
-                        </div>
-                        <div class="action-card-btn" onclick="shareReport()">
-                            <svg viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
-                            <span>Compartir<br>Informe</span>
-                        </div>
-                        <div class="action-card-btn" onclick="downloadReport()">
-                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                            <span>Descargar<br>PDF</span>
-                        </div>
+                        <div class="action-card-btn" onclick="shareAppAction()"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"></path></svg><span>Compartir<br>App</span></div>
+                        <div class="action-card-btn" onclick="openModal('bug-report-modal')"><svg viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg><span>Reportar<br>Fallo</span></div>
+                        <div class="action-card-btn" onclick="shareReport()"><svg viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg><span>Compartir<br>Informe</span></div>
+                        <div class="action-card-btn" onclick="downloadReport()"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span>Descargar<br>PDF</span></div>
                     </div>
                 </div>
             </div>
         </main>
 
         <nav id="mobile-nav">
-            <div class="nav-item active" onclick="switchMobileTab('chat')">
-                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
-                <span>Chat</span>
-            </div>
-            <div class="nav-item" onclick="switchMobileTab('stats')">
-                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-                <span>Datos</span>
-            </div>
+            <div class="nav-item active" onclick="switchMobileTab('chat')"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg><span>Chat</span></div>
+            <div class="nav-item" onclick="switchMobileTab('stats')"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg><span>Datos</span></div>
         </nav>
     </div>
 

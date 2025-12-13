@@ -4,12 +4,12 @@
   "description": "Analiza y visualiza tus exportaciones de chats de WhatsApp.",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "display_override": [
+    "fullscreen",
     "window-controls-overlay",
-    "standalone",
-    "fullscreen"
+    "standalone"
   ],
   "background_color": "#f0f2f5",
   "theme_color": "#075e54",
@@ -40,7 +40,7 @@
       "files": [
         {
           "name": "file",
-          "accept": [".txt", "text/plain", ".zip", "application/zip", "application/x-zip-compressed", "application/octet-stream"]
+          "accept": ["text/plain", "application/zip", "application/x-zip-compressed", "application/octet-stream"]
         }
       ]
     }
