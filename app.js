@@ -1,7 +1,7 @@
 /**
  * app.js
  * Lógica principal del Analizador de WhatsApp
- * Versión 3.0: Expert Level (PWA Install, Visual Sentiment, Rich PDF)
+ * Versión 3.1: Fix Share Target & Smart ZIP Detection
  */
 
 // --- Core State ---
@@ -11,10 +11,10 @@ let filteredMessages = [];
 let selectedIndices = new Set();
 let participants = [];
 let currentSlotId = null;
-let deferredPrompt; // Para el evento de instalación PWA
+let deferredPrompt; 
 
 // Charts references
-let charts = { pie: null, temporal: null, search: null, manual: null };
+let charts = { pie: null, temporal: null, search: null, manual: null, sentiment: null };
 const DB_NAME = 'WAAnalyzerV4_Media'; 
 
 // --- UI References ---
@@ -44,15 +44,12 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSlotsUI();
     checkSharedFile();
     
-    // Acordeones exclusivos
     const allDetails = document.querySelectorAll('details');
     allDetails.forEach(det => {
         det.addEventListener('click', function(e) {
             if (e.target.tagName === 'SUMMARY' || e.target.closest('summary')) {
                 allDetails.forEach(other => {
-                    if (other !== det) {
-                        other.removeAttribute('open');
-                    }
+                    if (other !== det) other.removeAttribute('open');
                 });
             }
         });
@@ -64,10 +61,8 @@ fileInput.addEventListener('change', handleFileUpload);
 
 // --- PWA INSTALLATION LOGIC ---
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevenir que Chrome muestre el prompt nativo inmediatamente
     e.preventDefault();
     deferredPrompt = e;
-    // Mostrar nuestro botón personalizado
     ui.btnInstall.style.display = 'flex';
 });
 
@@ -75,9 +70,7 @@ ui.btnInstall.addEventListener('click', async () => {
     if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            ui.btnInstall.style.display = 'none';
-        }
+        if (outcome === 'accepted') ui.btnInstall.style.display = 'none';
         deferredPrompt = null;
     }
 });
@@ -111,18 +104,34 @@ async function checkSharedFile() {
     }
 }
 
+// --- SMART FILE PROCESSING (FIXED) ---
 async function processImportedFile(file) {
      try {
         let text = "";
         let extractedMedia = {};
+        
+        // 1. Detección Inteligente de ZIP
+        // WhatsApp a veces envía archivos sin extensión .zip al compartir
+        let isZip = false;
+        try {
+            // Intentamos leerlo como ZIP independientemente del nombre
+            const zipTest = await JSZip.loadAsync(file);
+            if (Object.keys(zipTest.files).length > 0) isZip = true;
+        } catch (e) {
+            isZip = false;
+        }
 
-        if (file.name.endsWith('.zip')) {
+        if (isZip) {
             ui.progressText.innerText = "Descomprimiendo...";
             const zip = await JSZip.loadAsync(file);
+            
+            // Buscar .txt
             const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
-            if (!txtFile) throw new Error("ZIP sin archivo .txt");
+            if (!txtFile) throw new Error("El archivo compartido no contiene historial de chat (.txt)");
+            
             text = await txtFile.async('string');
             
+            ui.progressText.innerText = "Procesando Multimedia...";
             const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
             for (const f of mediaFiles) {
                 const fileName = f.name.split('/').pop(); 
@@ -130,11 +139,20 @@ async function processImportedFile(file) {
                 extractedMedia[fileName] = blob; 
             }
         } else {
+            // Si no es ZIP, asumimos texto plano
             text = await file.text();
         }
+        
+        // Validación básica
+        if (!text || text.length < 10) {
+             throw new Error("El archivo parece estar vacío o dañado.");
+        }
+
         await parseMessagesAsync(text, extractedMedia, file.name);
+        
     } catch (err) {
-        alert("Error: " + err.message);
+        console.error(err);
+        alert("No se pudo leer el chat: " + err.message);
         ui.loadingContainer.style.display = 'none';
     }
 }
@@ -223,10 +241,7 @@ function formatTime(seconds) {
     return `${hr}h ${min % 60}m`;
 }
 
-// Genera la barra visual de sentimiento
 function renderSentimentMeter(containerId, participant, score) {
-    // Normalizar score: Asumimos rango -50 a +50 para 0% a 100% (ajustable)
-    // 0 = 50% (Neutral)
     let percent = 50 + (score * 2); 
     if (percent < 0) percent = 0;
     if (percent > 100) percent = 100;
@@ -294,7 +309,7 @@ function updateAdvancedStats(analytics, participants) {
         document.getElementById('resp-time-p2').innerText = `${p2}: ${t2}`;
     }
 
-    // 3. Sentimiento Visual (Reemplazo de Canvas)
+    // 3. Sentimiento Visual
     const visualContainer = document.getElementById('sentiment-visual-container');
     visualContainer.innerHTML = '';
     
@@ -314,9 +329,7 @@ function updateAdvancedStats(analytics, participants) {
 }
 
 // --- APP LOGIC ---
-
-// Override loadChat wrapper
-const originalLoadChat = loadChat; // Reference placeholder
+const originalLoadChat = loadChat; 
 function loadChat(chatData) {
     currentSlotId = chatData.id;
     currentMessages = chatData.msgs; 
@@ -345,7 +358,6 @@ function loadChat(chatData) {
     renderMessages();
     updateDashboard();
 
-    // Actualizar paneles nuevos
     if (chatData.analytics) {
         updateAdvancedStats(chatData.analytics, chatData.participants);
         document.getElementById('details-emojis').style.display = 'block';
@@ -582,13 +594,11 @@ async function getGeneratedDoc() {
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 
-    // Helper: Centered Text
     const centerText = (text, yPos) => {
         const textWidth = doc.getStringUnitWidth(text) * doc.internal.getFontSize() / doc.internal.scaleFactor;
         doc.text(text, (pageWidth - textWidth) / 2, yPos);
     };
 
-    // Header
     doc.setFontSize(22); doc.setTextColor(7, 94, 84);
     centerText("Reporte de Chat", y); y += 15;
 
@@ -615,13 +625,7 @@ async function getGeneratedDoc() {
         doc.text(`• ${t2}`, 20, y); y += 15;
     }
 
-    // 3. Emojis (Texto Simple)
-    // Recuperamos analytics desde una variable global temporal o recalculamos (simplificación: acceder al DOM)
-    // Para hacerlo profesional, deberíamos tener acceso a 'chatData.analytics'. 
-    // Como getGeneratedDoc no recibe argumentos, lo inferimos del DOM por ahora o lo dejamos simple.
-    // (Mejora: Idealmente guardar 'lastAnalytics' globalmente en loadChat)
-
-    // 4. Gráficos (Screenshots de Canvas)
+    // 4. Gráficos (Screenshots)
     const addChart = (canvasId, title) => {
         try {
             const canvas = document.getElementById(canvasId);
@@ -639,7 +643,6 @@ async function getGeneratedDoc() {
     addChart('chart-pie', 'Distribución de Mensajes');
     addChart('chart-temporal', 'Actividad en el Tiempo');
     
-    // Nota al pie
     doc.setFontSize(8); doc.setTextColor(150);
     doc.text("Generado con Analizador WA - Local & Seguro", 14, 285);
 
